@@ -34,7 +34,7 @@ public sealed class DashboardController : Controller
     [Authorize(Roles = RolesAplicacion.Funcionario)]
     public IActionResult Funcionario()
     {
-        return View("Index", CreateModel());
+        return RedirectToAction("Index", "Funcionario");
     }
 
     [Authorize(Roles = RolesAplicacion.Administrador)]

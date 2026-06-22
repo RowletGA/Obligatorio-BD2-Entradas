@@ -95,6 +95,17 @@ El modulo `/Admin` requiere rol `ADMINISTRADOR`. Gestiona estadios, sectores, eq
 
 La creacion de eventos usa una transaccion MySQL sobre `Evento`, `EventoLocal`, `EventoVisita` y `EventoSector`. Los triggers de la base controlan conflictos horarios, equipos simultaneos y sectores fuera del estadio.
 
+## Flujo operativo
+
+- Compra: usuarios generales compran desde el detalle de evento. El formulario solo envía evento, sector y cantidad.
+- Mis compras: `/Compras`.
+- Mis entradas: `/Entradas/MisEntradas`, usando propietario actual.
+- Transferencias: `/Transferencias`.
+- Funcionarios: `/Funcionario` y `/Funcionario/Validar`.
+- Reportes: `/Admin/Reportes`.
+
+La compra usa transacción y no confía en precios enviados por el navegador.
+
 Para probarlo desde el navegador:
 
 1. Abrir `/Account/Register`.

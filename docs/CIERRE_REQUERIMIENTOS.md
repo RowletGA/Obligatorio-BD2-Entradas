@@ -1,0 +1,17 @@
+# Cierre de requerimientos
+
+| Requerimiento | Tipo | Estado | Pantalla | Controlador | Servicio | Repositorio | Tablas | Vistas | Triggers | Prueba manual | Limitación |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Registro y login | Obligatorio | CUMPLIDO | `/Account/Register`, `/Account/Login` | AccountController | UsuarioService | UsuarioRepository | Usuario, UsuarioGeneral | - | - | Probado previamente | Usuarios viejos con hash NULL |
+| Admin crea evento | Obligatorio | PARCIAL | `/Admin/Eventos/Nuevo` | AdminController | AdminService | AdminRepository | Evento, EventoLocal, EventoVisita, EventoSector | V_Eventos | eventos/equipos/sectores | Implementado; falta sesión admin real en esta corrida | Requiere demo admin |
+| Compra transaccional | Obligatorio | PARCIAL | `/Eventos/{id}`, `/Compras/Confirmar` | ComprasController | OperativaService | OperativaRepository | Venta, Entrada | V_DisponibilidadSectores | entrada monto/capacidad | Build/tests OK | Falta compra real E2E |
+| Mis compras | Obligatorio | CUMPLIDO | `/Compras` | ComprasController | OperativaService | OperativaRepository | Venta, Entrada | - | - | Ruta implementada | Depende de compras demo |
+| Mis entradas | Obligatorio | CUMPLIDO | `/Entradas/MisEntradas` | EntradasController | OperativaService | OperativaRepository | Entrada, Transferencia | V_PropietarioActual | - | Ruta implementada | Depende de compras demo |
+| Transferencia | Obligatorio | PARCIAL | `/Transferencias` | TransferenciasController | OperativaService | OperativaRepository | Transferencia | V_Transferencias, V_PropietarioActual | transferencia insert/update | Implementado | Falta aceptación real E2E |
+| Funcionario asignado | Obligatorio | PARCIAL | `/Admin/Funcionarios` | AdminController | OperativaService | OperativaRepository | FuncionarioEventoSector | V_ValidacionesPorFuncionario | FK EventoSector | Implementado | Requiere funcionario demo |
+| Validación | Obligatorio | PARCIAL | `/Funcionario/Validar` | FuncionarioController | OperativaService | OperativaRepository | Validacion, Entrada | V_ValidacionEntrada | validación insert/update | Implementado | Falta doble validación real |
+| Reportes básicos | Obligatorio | CUMPLIDO | `/Admin/Reportes` | ReportesController | OperativaService | OperativaRepository | Venta, Entrada, Evento | - | - | Ruta implementada | Sin gráficos |
+| QR dinámico | Opcional | OPCIONAL NO IMPLEMENTADO | - | - | - | - | - | - | - | No aplica | Documentado como futuro |
+| Cámara | Opcional | OPCIONAL NO IMPLEMENTADO | - | - | - | - | - | - | - | No aplica | Fuera de alcance |
+| Dispositivos autorizados | Opcional | OPCIONAL NO IMPLEMENTADO | - | - | - | - | - | - | - | No aplica | No modelado en scripts |
+| Docker | Opcional | OPCIONAL NO IMPLEMENTADO | - | - | - | - | - | - | - | No aplica | Fuera de alcance |

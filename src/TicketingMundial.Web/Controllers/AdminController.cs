@@ -15,7 +15,8 @@ namespace TicketingMundial.Web.Controllers;
 [Route("Admin")]
 public sealed class AdminController(
     IAdminService adminService,
-    ICatalogoRegistroService catalogoRegistroService) : Controller
+    ICatalogoRegistroService catalogoRegistroService,
+    IOperativaService operativaService) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -244,6 +245,45 @@ public sealed class AdminController(
         return RedirectToAction(nameof(EventoDetalle), new { id });
     }
 
+    [HttpGet("Funcionarios")]
+    public async Task<IActionResult> Funcionarios(CancellationToken cancellationToken)
+    {
+        var admin = await adminService.ObtenerAdministradorAsync(GetDocumento(), cancellationToken);
+        ViewBag.Asignaciones = await operativaService.ListarAsignacionesAsync(admin?.PaisSede ?? string.Empty, cancellationToken);
+        return View(await PrepareAsignarFuncionarioAsync(new AsignarFuncionarioViewModel(), cancellationToken));
+    }
+
+    [HttpPost("Funcionarios/Asignar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AsignarFuncionario(AsignarFuncionarioViewModel model, CancellationToken cancellationToken)
+    {
+        var admin = await adminService.ObtenerAdministradorAsync(GetDocumento(), cancellationToken);
+        if (!ModelState.IsValid || admin is null)
+        {
+            ViewBag.Asignaciones = admin is null ? [] : await operativaService.ListarAsignacionesAsync(admin.PaisSede, cancellationToken);
+            return View("Funcionarios", await PrepareAsignarFuncionarioAsync(model, cancellationToken));
+        }
+
+        var parts = model.FuncionarioKey.Split('|');
+        if (parts.Length != 3)
+        {
+            TempData["Error"] = "Funcionario inválido.";
+            return RedirectToAction(nameof(Funcionarios));
+        }
+
+        try
+        {
+            var result = await operativaService.AsignarFuncionarioAsync(new DocumentoUsuario(parts[0], parts[1], parts[2]), model.IdEvento, model.IdSector, admin.PaisSede, cancellationToken);
+            TempData[result.Success ? "Success" : "Error"] = result.Message;
+        }
+        catch (DatabaseException ex)
+        {
+            TempData["Error"] = ex.UserMessage;
+        }
+
+        return RedirectToAction(nameof(Funcionarios));
+    }
+
     private async Task<IActionResult> SaveEstadioAsync(EstadioFormViewModel model, CancellationToken cancellationToken)
     {
         var admin = await adminService.ObtenerAdministradorAsync(GetDocumento(), cancellationToken);
@@ -365,6 +405,32 @@ public sealed class AdminController(
                 PrecioBase = item?.PrecioBase ?? 0
             };
         }).ToList();
+        return model;
+    }
+
+    private async Task<AsignarFuncionarioViewModel> PrepareAsignarFuncionarioAsync(AsignarFuncionarioViewModel model, CancellationToken cancellationToken)
+    {
+        model.Funcionarios = (await operativaService.ListarFuncionariosAsync(cancellationToken))
+            .Select(f => new SelectListItem($"{f.Nombre} · {f.NumLegajo}", $"{f.Documento.TipoDocumento}|{f.Documento.PaisDocumento}|{f.Documento.NumeroDocumento}"))
+            .ToArray();
+        model.Eventos = (await adminService.ListarEventosAsync(GetDocumento(), 1, 100, cancellationToken)).Items
+            .Select(e => new SelectListItem($"{e.IdEvento} · {e.FechaHora:g} · {e.Estadio}", e.IdEvento.ToString()))
+            .ToArray();
+        var eventos = await adminService.ListarEventosAsync(GetDocumento(), 1, 100, cancellationToken);
+        var sectores = new List<SelectListItem>();
+        foreach (var eventoResumen in eventos.Items)
+        {
+            var evento = await adminService.ObtenerEventoAsync(GetDocumento(), eventoResumen.IdEvento, cancellationToken);
+            if (evento is null)
+            {
+                continue;
+            }
+
+            sectores.AddRange(evento.Sectores.Select(s => new SelectListItem(
+                $"{evento.IdEvento} · {evento.Estadio} · {s.NombreSector}",
+                s.IdSector.ToString())));
+        }
+        model.Sectores = sectores;
         return model;
     }
 

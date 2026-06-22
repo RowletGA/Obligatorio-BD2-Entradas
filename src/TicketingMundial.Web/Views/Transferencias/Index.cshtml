@@ -1,0 +1,5 @@
+@model TransferenciasIndexViewModel
+@{ ViewData["Title"] = "Transferencias"; }
+<section class="page-heading"><p class="section-kicker">Usuario</p><h1>Transferencias</h1></section>
+<section class="content-panel mb-3"><h2 class="h5">Recibidas</h2><partial name="_TransferenciasTabla" model="Model.Recibidas" /></section>
+<section class="content-panel"><h2 class="h5">Enviadas</h2><partial name="_TransferenciasTabla" model="Model.Enviadas" /></section>

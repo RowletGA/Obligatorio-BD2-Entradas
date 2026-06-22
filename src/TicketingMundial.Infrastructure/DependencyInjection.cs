@@ -16,6 +16,7 @@ public static class DependencyInjection
         services.AddSingleton<IDbConnectionFactory, MySqlConnectionFactory>();
         services.AddScoped<IMySqlExceptionTranslator, MySqlExceptionTranslator>();
         services.AddScoped<IAdminRepository, AdminRepository>();
+        services.AddScoped<IOperativaRepository, OperativaRepository>();
         services.AddScoped<IEventoRepository, EventoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IPasswordService, PasswordService>();

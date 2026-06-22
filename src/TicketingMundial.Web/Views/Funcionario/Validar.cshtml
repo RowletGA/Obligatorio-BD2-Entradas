@@ -1,0 +1,19 @@
+@model ValidarEntradaViewModel
+@{ ViewData["Title"] = "Validar entrada"; }
+<section class="page-heading"><p class="section-kicker">Funcionario</p><h1>Validar entrada</h1></section>
+<form method="post" class="content-panel mb-3">
+    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+    <label asp-for="IdEntrada" class="form-label">ID de entrada</label>
+    <input asp-for="IdEntrada" class="form-control" type="number" min="1" />
+    <label asp-for="Token" class="form-label mt-3">Token manual</label>
+    <input asp-for="Token" class="form-control" placeholder="DEMO" />
+    <button class="btn btn-primary mt-3">Validar</button>
+</form>
+@if (Model.Resultado is not null)
+{
+    <section class="content-panel">
+        <h2 class="h5">Resultado</h2>
+        <div class="detail-grid"><div><span>Entrada</span><strong>@Model.Resultado.IdEntrada</strong></div><div><span>Estado</span><strong>@Model.Resultado.EstadoEntrada</strong></div><div><span>Resultado</span><strong>@Model.Resultado.ResultadoValidacion</strong></div></div>
+    </section>
+}
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

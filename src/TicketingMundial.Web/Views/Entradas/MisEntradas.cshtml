@@ -1,0 +1,9 @@
+@model IReadOnlyList<EntradaResumenDto>
+@{ ViewData["Title"] = "Mis entradas"; }
+<section class="page-heading"><p class="section-kicker">Usuario</p><h1>Mis entradas</h1></section>
+<section class="content-panel">
+@if (Model.Count == 0) { <p class="text-secondary mb-0">No tenés entradas propias.</p> }
+else { <div class="table-responsive"><table class="table align-middle"><thead><tr><th>ID</th><th>Evento</th><th>Fecha</th><th>Sector</th><th>Estado</th><th></th></tr></thead><tbody>
+@foreach (var e in Model) { <tr><td>@e.IdEntrada</td><td>@e.Evento</td><td>@e.FechaEvento.ToString("g")</td><td>@e.Sector</td><td>@e.EstadoEntrada</td><td><a asp-action="Detalle" asp-route-id="@e.IdEntrada">Ver</a></td></tr> }
+</tbody></table></div> }
+</section>

@@ -1,0 +1,19 @@
+@model AsignarFuncionarioViewModel
+@{
+    ViewData["Title"] = "Funcionarios";
+    var asignaciones = ViewBag.Asignaciones as IReadOnlyList<AsignacionFuncionarioDto> ?? [];
+}
+<section class="page-heading"><p class="section-kicker">Administración</p><h1>Funcionarios</h1></section>
+<form asp-action="AsignarFuncionario" method="post" class="content-panel mb-3">
+    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+    <div class="form-section">
+        <div><label asp-for="FuncionarioKey" class="form-label">Funcionario</label><select asp-for="FuncionarioKey" asp-items="Model.Funcionarios" class="form-select"><option value="">Seleccionar</option></select></div>
+        <div><label asp-for="IdEvento" class="form-label">Evento</label><select asp-for="IdEvento" asp-items="Model.Eventos" class="form-select"><option value="">Seleccionar</option></select></div>
+        <div><label asp-for="IdSector" class="form-label">Sector habilitado</label><select asp-for="IdSector" asp-items="Model.Sectores" class="form-select"><option value="">Seleccionar evento primero</option></select></div>
+    </div>
+    <button class="btn btn-primary mt-3">Asignar</button>
+</form>
+<section class="content-panel">
+<h2 class="h5">Asignaciones</h2>
+@if (asignaciones.Count == 0) { <p class="text-secondary mb-0">Sin asignaciones.</p> } else { <div class="table-responsive"><table class="table"><thead><tr><th>Funcionario</th><th>Evento</th><th>Estadio</th><th>Sector</th></tr></thead><tbody>@foreach (var a in asignaciones) { <tr><td>@a.Funcionario</td><td>@a.IdEvento</td><td>@a.Estadio</td><td>@a.Sector</td></tr> }</tbody></table></div> }
+</section>

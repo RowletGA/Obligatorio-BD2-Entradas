@@ -47,21 +47,19 @@
                     <a asp-controller="Admin" asp-action="Sectores">Sectores</a>
                     <a asp-controller="Admin" asp-action="Equipos">Equipos</a>
                     <a asp-controller="Admin" asp-action="Eventos">Eventos</a>
-                    <a asp-controller="Funcionalidades" asp-action="Funcionarios">Funcionarios</a>
-                    <a asp-controller="Funcionalidades" asp-action="Reportes">Reportes</a>
+                    <a asp-controller="Admin" asp-action="Funcionarios">Funcionarios</a>
+                    <a asp-controller="Reportes" asp-action="Index">Reportes</a>
                 }
                 else if (User.IsInRole(RolesAplicacion.Funcionario))
                 {
-                    <a asp-controller="Dashboard" asp-action="Funcionario">Dashboard</a>
-                    <a asp-controller="Funcionalidades" asp-action="EventosAsignados">Eventos asignados</a>
-                    <a asp-controller="Funcionalidades" asp-action="ValidarEntrada">Validar entrada</a>
-                    <a asp-controller="Funcionalidades" asp-action="Validaciones">Validaciones</a>
+                    <a asp-controller="Funcionario" asp-action="Index">Eventos asignados</a>
+                    <a asp-controller="Funcionario" asp-action="Validar">Validar entrada</a>
                 }
                 else if (User.IsInRole(RolesAplicacion.UsuarioGeneral))
                 {
-                    <a asp-controller="Funcionalidades" asp-action="MisEntradas">Mis entradas</a>
-                    <a asp-controller="Funcionalidades" asp-action="MisCompras">Mis compras</a>
-                    <a asp-controller="Funcionalidades" asp-action="Transferencias">Transferencias</a>
+                    <a asp-controller="Entradas" asp-action="MisEntradas">Mis entradas</a>
+                    <a asp-controller="Compras" asp-action="Index">Mis compras</a>
+                    <a asp-controller="Transferencias" asp-action="Index">Transferencias</a>
                     <a asp-controller="Account" asp-action="Profile">Mi perfil</a>
                 }
             </nav>

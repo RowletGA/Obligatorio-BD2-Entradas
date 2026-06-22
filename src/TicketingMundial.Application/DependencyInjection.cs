@@ -11,6 +11,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<ICatalogoRegistroService, CatalogoRegistroService>();
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<IOperativaService, OperativaService>();
         services.AddScoped<IEventoService, EventoService>();
         services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();

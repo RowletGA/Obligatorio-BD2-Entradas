@@ -31,6 +31,35 @@
     </div>
 </section>
 
+@if (User.IsInRole(RolesAplicacion.UsuarioGeneral) && evento.Estado == "PROGRAMADO" && evento.Sectores.Any(s => s.LugaresDisponibles > 0))
+{
+    <section class="content-panel mt-4">
+        <h2 class="h5">Comprar entradas</h2>
+        <form asp-controller="Compras" asp-action="Confirmar" method="post">
+            <input type="hidden" name="IdEvento" value="@evento.IdEvento" />
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>Sector</th><th>Disponibles</th><th>Cantidad</th></tr></thead>
+                    <tbody>
+                    @for (var i = 0; i < evento.Sectores.Count; i++)
+                    {
+                        <tr>
+                            <td>@evento.Sectores[i].NombreSector</td>
+                            <td>@evento.Sectores[i].LugaresDisponibles</td>
+                            <td style="max-width: 160px">
+                                <input type="hidden" name="Sectores[@i].IdSector" value="@evento.Sectores[i].IdSector" />
+                                <input name="Sectores[@i].Cantidad" class="form-control" type="number" min="0" max="5" value="0" />
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-primary">Continuar</button>
+        </form>
+    </section>
+}
+
 <section class="content-panel">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="h5 mb-0">Disponibilidad por sector</h2>

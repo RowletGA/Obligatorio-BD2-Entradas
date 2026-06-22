@@ -33,7 +33,11 @@ El catálogo está en `/Eventos`. Si no hay eventos visibles, cargar datos con e
 
 Como administrador, abrir `/Admin`, crear estadio, sectores y equipos. Luego ir a `/Admin/Eventos/Nuevo`, seleccionar estadio, equipos, sectores y precios. La creación usa transacción y triggers de la base.
 
-Comprar, transferir y validar siguen pendientes. No simularlos en controladores ni agregar tablas.
+Comprar: iniciar sesión como usuario general, abrir un evento programado y seleccionar cantidades por sector.
+
+Transferir: abrir `/Entradas/MisEntradas`, ver detalle y usar el correo del receptor.
+
+Validar: iniciar sesión como funcionario asignado y abrir `/Funcionario/Validar`.
 
 ## Dónde está cada módulo
 

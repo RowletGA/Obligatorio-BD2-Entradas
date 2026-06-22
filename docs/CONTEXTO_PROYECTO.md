@@ -122,11 +122,11 @@ Usar correos y documentos claramente artificiales. No borrar datos ajenos ni lim
 | Login/logout | Sí | - | - | `AuthenticationService`, `UsuarioRepository` | Usuarios con hash NULL no ingresan |
 | Eventos lectura | Sí | - | - | `EventosController`, `EventoRepository` | Depende de datos visibles en DB |
 | Administración | Sí | Funcionarios/reportes pendientes | Baja física y edición avanzada de eventos | `AdminController`, `AdminService`, `AdminRepository` | Respeta país del administrador |
-| Compra | No | Interfaces reservadas | Flujo transaccional | `IVentaRepository` | No confiar en precios del cliente |
-| Compras/entradas | No | Interfaces reservadas | Pantallas reales | `IEntradaRepository` | Usar claims y vistas |
-| Transferencias | No | Interfaces reservadas | Flujo completo | `ITransferenciaRepository` | Usar triggers como autoridad final |
-| Validación | No | Interfaces reservadas | Funcionario real | `IValidacionRepository` | Dispositivos autorizados no están modelados |
-| Reportes | No | Interfaces reservadas | Queries y vistas | `IReporteRepository` | No crear vistas nuevas |
+| Compra | Sí | Falta E2E real documentado | Medios de pago reales | `OperativaRepository` | No confía en precios del cliente |
+| Compras/entradas | Sí | - | - | `OperativaRepository` | Usa claims y `V_PropietarioActual` |
+| Transferencias | Sí | Falta E2E real documentado | Notificaciones | `OperativaRepository` | Triggers son autoridad final |
+| Validación | Sí | Manual por ID/token demo | QR/cámara/dispositivos | `OperativaRepository` | Dispositivos autorizados no están modelados |
+| Reportes | Sí | Básicos | Gráficos/exportación | `OperativaRepository` | No crea vistas nuevas |
 
 ## 11. Próximos pasos
 

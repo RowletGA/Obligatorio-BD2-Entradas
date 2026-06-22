@@ -75,3 +75,27 @@ Limitaciones:
 - No se implementó eliminación física.
 - Funcionarios y reportes siguen pendientes.
 - La prueba manual de creación real requiere un usuario administrador existente en la base remota.
+
+## 2026-06-22 - Recorrido operativo mínimo
+
+Funcionalidades:
+
+- Compra de entradas para `USUARIO_GENERAL` desde detalle de evento.
+- Confirmación de compra con cálculo informativo y recálculo servidor.
+- Transacción MySQL de compra con `SELECT ... FOR UPDATE`, inserción de `Venta` y `Entrada`, y confirmación de venta.
+- `/Compras` y detalle de compra filtrados por claims.
+- `/Entradas/MisEntradas` basado en `V_PropietarioActual`.
+- Transferencias enviadas/recibidas, creación, aceptación, rechazo y cancelación.
+- Administración mínima de asignaciones de funcionarios.
+- Validación manual de entrada para funcionario.
+- Reportes básicos de eventos vendidos y compradores.
+
+Pruebas:
+
+- `dotnet build TicketingMundial.sln`: correcto, 0 warnings.
+- `dotnet test TicketingMundial.sln`: 78 exitosas.
+
+Limitaciones:
+
+- No se ejecutó recorrido E2E completo con datos reales por falta de credenciales demo confirmadas en esta sesión.
+- QR gráfico, cámara y dispositivos autorizados quedan fuera de alcance.
