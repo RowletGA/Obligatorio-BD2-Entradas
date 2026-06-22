@@ -88,7 +88,7 @@
                 {
                     <tr>
                         <td class="fw-semibold">@sector.NombreSector</td>
-                        <td class="text-end">$ @sector.PrecioBase.ToString("N2")</td>
+                        <td class="text-end">@MoneyFormatter.Format(sector.PrecioBase)</td>
                         <td class="text-end">@sector.Capacidad</td>
                         <td class="text-end">@sector.EntradasEmitidas</td>
                         <td class="text-end">

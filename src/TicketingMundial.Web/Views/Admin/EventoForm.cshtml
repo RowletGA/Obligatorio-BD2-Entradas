@@ -42,6 +42,7 @@
 
     <fieldset class="form-section">
         <legend>Sectores habilitados</legend>
+        <span asp-validation-for="Sectores" class="text-danger small"></span>
         @if (Model.Sectores.Count == 0)
         {
             <p class="text-secondary mb-0">Seleccioná un estadio con sectores cargados para habilitar precios.</p>
@@ -50,14 +51,20 @@
         {
             @for (var i = 0; i < Model.Sectores.Count; i++)
             {
-                <div>
+                <div class="sector-option">
                     <input type="hidden" asp-for="Sectores[i].IdSector" />
                     <input type="hidden" asp-for="Sectores[i].NombreSector" />
+                    <input type="hidden" asp-for="Sectores[i].Capacidad" />
                     <div class="form-check">
-                        <input asp-for="Sectores[i].Seleccionado" class="form-check-input" />
+                        <input asp-for="Sectores[i].Seleccionado" class="form-check-input" data-sector-check />
                         <label asp-for="Sectores[i].Seleccionado" class="form-check-label">@Model.Sectores[i].NombreSector</label>
                     </div>
-                    <input asp-for="Sectores[i].PrecioBase" class="form-control mt-2" type="number" step="0.01" min="0" placeholder="Precio base" />
+                    <div class="text-secondary small mt-1">Capacidad: @Model.Sectores[i].Capacidad personas</div>
+                    <label asp-for="Sectores[i].PrecioBase" class="form-label mt-2">Precio por entrada</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input asp-for="Sectores[i].PrecioBase" class="form-control" type="number" step="0.01" min="0.01" placeholder="Ej.: 1200.00" data-sector-price disabled="@(!Model.Sectores[i].Seleccionado)" />
+                    </div>
                     <span asp-validation-for="Sectores[i].PrecioBase" class="text-danger small"></span>
                 </div>
             }

@@ -20,3 +20,16 @@ public sealed class LoginViewModel
 
     public string? ReturnUrl { get; set; }
 }
+
+public sealed class SeleccionarPerfilViewModel
+{
+    public IReadOnlyList<PerfilDisponibleViewModel> Perfiles { get; init; } = [];
+    public string? PerfilActivo { get; init; }
+}
+
+public sealed class PerfilDisponibleViewModel
+{
+    public string Codigo { get; init; } = string.Empty;
+    public string Nombre { get; init; } = string.Empty;
+    public string Descripcion { get; init; } = string.Empty;
+}

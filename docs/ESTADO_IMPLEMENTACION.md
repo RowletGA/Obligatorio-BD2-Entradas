@@ -99,3 +99,27 @@ Limitaciones:
 
 - No se ejecutó recorrido E2E completo con datos reales por falta de credenciales demo confirmadas en esta sesión.
 - QR gráfico, cámara y dispositivos autorizados quedan fuera de alcance.
+
+## 2026-06-22 - Pulido final de perfiles, navegación y eventos
+
+Funcionalidades:
+
+- Claim propio `PerfilActivo` para separar interfaz activa de roles reales.
+- Login redirige a selección cuando un usuario posee múltiples perfiles.
+- `/Account/SeleccionarPerfil` muestra solo perfiles reales del usuario.
+- `/Account/CambiarPerfil` valida el perfil solicitado contra `ClaimTypes.Role`, reemite cookie y conserva todos los roles.
+- `/Dashboard` decide por perfil activo y corrige cookies antiguas sin `PerfilActivo`.
+- Navegación diferenciada para público, usuario general, administrador y funcionario.
+- Formulario de evento muestra capacidad de sector como solo lectura y etiqueta precio como “Precio por entrada”.
+- Precio de sector obligatorio solo si el sector está seleccionado, con `min="0.01"` y `step="0.01"`.
+- Formato monetario unificado con `MoneyFormatter`.
+
+Pruebas:
+
+- `dotnet build TicketingMundial.sln`: correcto, 0 warnings.
+- `DOTNET_ROLL_FORWARD=Major dotnet test TicketingMundial.sln`: 84 exitosas.
+
+Limitaciones:
+
+- El entorno local tiene runtime .NET 10 y no .NET 8; para ejecutar tests se usó `DOTNET_ROLL_FORWARD=Major`.
+- Historial de validaciones se mantiene en el alcance actual de funcionario/asignaciones sin pantalla nueva específica.

@@ -139,4 +139,29 @@ document.addEventListener('DOMContentLoaded', () => {
         typeSelect?.addEventListener('change', refreshDocumentHelp);
         refreshDocumentTypes();
     }
+
+    document.querySelectorAll('[data-sector-check]').forEach((checkbox) => {
+        if (!(checkbox instanceof HTMLInputElement)) {
+            return;
+        }
+
+        const container = checkbox.closest('div')?.parentElement;
+        const priceInput = container?.querySelector('[data-sector-price]');
+        if (!(priceInput instanceof HTMLInputElement)) {
+            return;
+        }
+
+        function syncSectorPrice(focus) {
+            priceInput.disabled = !checkbox.checked;
+            priceInput.required = checkbox.checked;
+            if (!checkbox.checked) {
+                priceInput.value = '';
+            } else if (focus) {
+                priceInput.focus();
+            }
+        }
+
+        checkbox.addEventListener('change', () => syncSectorPrice(true));
+        syncSectorPrice(false);
+    });
 });

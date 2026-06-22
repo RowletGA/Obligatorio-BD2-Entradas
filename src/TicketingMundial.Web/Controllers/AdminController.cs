@@ -191,6 +191,7 @@ public sealed class AdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> NuevoEvento(EventoCreateViewModel model, CancellationToken cancellationToken)
     {
+        ValidateEventoSectores(model);
         if (!ModelState.IsValid)
         {
             return View("EventoForm", await PrepareEventoFormAsync(model, cancellationToken));
@@ -206,7 +207,7 @@ public sealed class AdminController(
             EstadoEvento = model.EstadoEvento,
             Sectores = model.Sectores
                 .Where(sector => sector.Seleccionado)
-                .Select(sector => new EventoSectorCreateCommand { IdSector = sector.IdSector, PrecioBase = sector.PrecioBase })
+                .Select(sector => new EventoSectorCreateCommand { IdSector = sector.IdSector, PrecioBase = sector.PrecioBase!.Value })
                 .ToArray()
         };
 
@@ -401,8 +402,9 @@ public sealed class AdminController(
             {
                 IdSector = sector.IdSector,
                 NombreSector = sector.NombreSector,
+                Capacidad = sector.Capacidad,
                 Seleccionado = item?.Seleccionado ?? false,
-                PrecioBase = item?.PrecioBase ?? 0
+                PrecioBase = item?.PrecioBase
             };
         }).ToList();
         return model;
@@ -450,6 +452,36 @@ public sealed class AdminController(
             new SelectListItem(EstadoEvento.Finalizado, EstadoEvento.Finalizado),
             new SelectListItem(EstadoEvento.Cancelado, EstadoEvento.Cancelado)
         ];
+    }
+
+    private void ValidateEventoSectores(EventoCreateViewModel model)
+    {
+        if (!model.Sectores.Any(sector => sector.Seleccionado))
+        {
+            ModelState.AddModelError(nameof(model.Sectores), "Debe habilitar al menos un sector.");
+            return;
+        }
+
+        for (var i = 0; i < model.Sectores.Count; i++)
+        {
+            var sector = model.Sectores[i];
+            if (!sector.Seleccionado)
+            {
+                ModelState.Remove($"Sectores[{i}].PrecioBase");
+                continue;
+            }
+
+            if (!sector.PrecioBase.HasValue)
+            {
+                ModelState.AddModelError($"Sectores[{i}].PrecioBase", "Ingrese el precio por entrada.");
+                continue;
+            }
+
+            if (sector.PrecioBase <= 0)
+            {
+                ModelState.AddModelError($"Sectores[{i}].PrecioBase", "El precio por entrada debe ser mayor a cero.");
+            }
+        }
     }
 
     private DocumentoUsuario GetDocumento()

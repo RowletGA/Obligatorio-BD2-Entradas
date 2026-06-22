@@ -53,7 +53,20 @@ public sealed class AccountController(
                 return View(model);
             }
 
-            await SignInAsync(usuario.Usuario, model.RememberMe);
+            var roles = usuario.Usuario.Roles
+                .Where(PerfilActivoExtensions.PerfilesOrdenados.Contains)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            var perfilInicial = roles.Length == 1 ? roles[0] : null;
+
+            await SignInAsync(usuario.Usuario, model.RememberMe, perfilInicial);
+
+            TempData["Success"] = "Inicio de sesión correcto.";
+
+            if (roles.Length > 1)
+            {
+                return RedirectToAction(nameof(SeleccionarPerfil));
+            }
 
             if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
             {
@@ -137,6 +150,55 @@ public sealed class AccountController(
 
     [Authorize]
     [HttpGet]
+    public async Task<IActionResult> SeleccionarPerfil()
+    {
+        var roles = User.GetRolesReales();
+        if (roles.Count == 0)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction(nameof(Login));
+        }
+
+        if (roles.Count == 1)
+        {
+            await EmitirCookieConPerfilActivoAsync(roles[0]);
+            return RedirectToAction("Index", "Dashboard");
+        }
+
+        return View(new SeleccionarPerfilViewModel
+        {
+            PerfilActivo = User.GetPerfilActivoSeguro(),
+            Perfiles = roles
+                .Select(perfil => new PerfilDisponibleViewModel
+                {
+                    Codigo = perfil,
+                    Nombre = PerfilActivoExtensions.GetNombrePerfil(perfil),
+                    Descripcion = PerfilActivoExtensions.GetDescripcionPerfil(perfil)
+                })
+                .ToArray()
+        });
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CambiarPerfil(string perfil)
+    {
+        var solicitado = (perfil ?? string.Empty).Trim().ToUpperInvariant();
+        var roles = User.GetRolesReales();
+        if (!roles.Contains(solicitado))
+        {
+            TempData["Error"] = "No tenés ese perfil asignado.";
+            return RedirectToAction(nameof(SeleccionarPerfil));
+        }
+
+        await EmitirCookieConPerfilActivoAsync(solicitado);
+        TempData["Success"] = $"Perfil activo: {PerfilActivoExtensions.GetNombrePerfil(solicitado)}.";
+        return RedirectToAction("Index", "Dashboard");
+    }
+
+    [Authorize]
+    [HttpGet]
     public IActionResult Profile()
     {
         var model = new ProfileViewModel
@@ -158,9 +220,14 @@ public sealed class AccountController(
         return View();
     }
 
-    private Task SignInAsync(UsuarioAutenticadoDto usuario, bool rememberMe)
+    private Task SignInAsync(UsuarioAutenticadoDto usuario, bool rememberMe, string? perfilActivo)
     {
-        var claims = AuthenticationClaimsFactory.CreateClaims(usuario);
+        var claims = AuthenticationClaimsFactory.CreateClaims(usuario).ToList();
+        if (!string.IsNullOrWhiteSpace(perfilActivo))
+        {
+            claims.Add(new Claim(PerfilActivoExtensions.ClaimType, perfilActivo));
+        }
+
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
@@ -173,6 +240,21 @@ public sealed class AccountController(
                 AllowRefresh = true,
                 ExpiresUtc = DateTimeOffset.UtcNow.AddHours(rememberMe ? 12 : 2)
             });
+    }
+
+    private async Task EmitirCookieConPerfilActivoAsync(string perfilActivo)
+    {
+        var authenticateResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        var claims = User.Claims
+            .Where(claim => claim.Type != PerfilActivoExtensions.ClaimType)
+            .Append(new Claim(PerfilActivoExtensions.ClaimType, perfilActivo))
+            .ToArray();
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+        var properties = authenticateResult.Properties ?? new AuthenticationProperties { AllowRefresh = true };
+
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, properties);
     }
 
     private RegisterViewModel PrepareRegisterViewModel(RegisterViewModel model)

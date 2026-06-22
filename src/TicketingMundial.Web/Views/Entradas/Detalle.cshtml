@@ -2,6 +2,6 @@
 @{ ViewData["Title"] = $"Entrada {Model.IdEntrada}"; }
 <section class="page-heading"><p class="section-kicker">Entrada</p><h1>Entrada @Model.IdEntrada</h1><p>@Model.Evento · @Model.Estadio</p></section>
 <section class="content-panel">
-<div class="detail-grid"><div><span>Fecha</span><strong>@Model.FechaEvento.ToString("g")</strong></div><div><span>Sector</span><strong>@Model.Sector</strong></div><div><span>Estado</span><strong>@Model.EstadoEntrada</strong></div><div><span>Costo</span><strong>$ @Model.Costo.ToString("N2")</strong></div><div><span>Transferencias aceptadas</span><strong>@Model.TransferenciasAceptadas</strong></div></div>
+<div class="detail-grid"><div><span>Fecha</span><strong>@Model.FechaEvento.ToString("g")</strong></div><div><span>Sector</span><strong>@Model.Sector</strong></div><div><span>Estado</span><strong>@Model.EstadoEntrada</strong></div><div><span>Costo</span><strong>@MoneyFormatter.Format(Model.Costo)</strong></div><div><span>Transferencias aceptadas</span><strong>@Model.TransferenciasAceptadas</strong></div></div>
 @if (Model.EstadoEntrada == "ACTIVA") { <a class="btn btn-primary mt-3" asp-action="Transferir" asp-route-id="@Model.IdEntrada">Transferir</a> }
 </section>

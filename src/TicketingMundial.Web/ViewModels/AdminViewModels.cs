@@ -106,9 +106,10 @@ public sealed class EventoSectorFormViewModel
 {
     public ulong IdSector { get; set; }
     public string NombreSector { get; set; } = string.Empty;
+    public uint Capacidad { get; set; }
     public bool Seleccionado { get; set; }
-    [Range(0, 9999999999)]
-    public decimal PrecioBase { get; set; }
+    [Range(0.01, 9999999999)]
+    public decimal? PrecioBase { get; set; }
 }
 
 public sealed class EventoEstadoViewModel

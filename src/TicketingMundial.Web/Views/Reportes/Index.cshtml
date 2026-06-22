@@ -13,5 +13,5 @@
 @if (Model.Eventos.Count == 0) { <p class="text-secondary mb-0">Sin datos.</p> } else { <div class="table-responsive"><table class="table"><thead><tr><th>Evento</th><th>Fecha</th><th>Estadio</th><th>Vendidas</th></tr></thead><tbody>@foreach (var e in Model.Eventos) { <tr><td>@e.Evento</td><td>@e.FechaHora.ToString("g")</td><td>@e.Estadio</td><td>@e.EntradasVendidas</td></tr> }</tbody></table></div> }
 </section>
 <section class="content-panel"><h2 class="h5">Mayores compradores</h2>
-@if (Model.Compradores.Count == 0) { <p class="text-secondary mb-0">Sin datos.</p> } else { <div class="table-responsive"><table class="table"><thead><tr><th>Comprador</th><th>Correo</th><th>Entradas</th><th>Total</th></tr></thead><tbody>@foreach (var c in Model.Compradores) { <tr><td>@c.Comprador</td><td>@c.Correo</td><td>@c.EntradasCompradas</td><td>$ @c.TotalGastado.ToString("N2")</td></tr> }</tbody></table></div> }
+@if (Model.Compradores.Count == 0) { <p class="text-secondary mb-0">Sin datos.</p> } else { <div class="table-responsive"><table class="table"><thead><tr><th>Comprador</th><th>Correo</th><th>Entradas</th><th>Total</th></tr></thead><tbody>@foreach (var c in Model.Compradores) { <tr><td>@c.Comprador</td><td>@c.Correo</td><td>@c.EntradasCompradas</td><td>@MoneyFormatter.Format(c.TotalGastado)</td></tr> }</tbody></table></div> }
 </section>

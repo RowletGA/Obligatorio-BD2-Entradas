@@ -13,6 +13,13 @@ dotnet test TicketingMundial.sln
 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/TicketingMundial.Web --urls http://localhost:5000
 ```
 
+En PowerShell:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT="Development"
+dotnet run --project src/TicketingMundial.Web --urls "http://localhost:5000"
+```
+
 Configurar `src/TicketingMundial.Web/appsettings.Development.json` desde `appsettings.example.json`. No compartir credenciales reales.
 
 ## Cómo probar cada rol
@@ -20,6 +27,8 @@ Configurar `src/TicketingMundial.Web/appsettings.Development.json` desde `appset
 - Usuario general: registrarse en `/Account/Register` y luego ingresar en `/Account/Login`.
 - Administrador: requiere datos existentes en tablas `Usuario` y `Administrador`.
 - Funcionario: requiere datos existentes en tablas `Usuario` y `Funcionario`.
+
+Si una misma persona tiene más de un perfil, después del login debe elegir en `/Account/SeleccionarPerfil`. El menú muestra solo la interfaz del perfil activo y permite cambiar sin cerrar sesión.
 
 ## Registro
 
@@ -31,7 +40,7 @@ El catálogo está en `/Eventos`. Si no hay eventos visibles, cargar datos con e
 
 ## Crear evento
 
-Como administrador, abrir `/Admin`, crear estadio, sectores y equipos. Luego ir a `/Admin/Eventos/Nuevo`, seleccionar estadio, equipos, sectores y precios. La creación usa transacción y triggers de la base.
+Como administrador, abrir `/Admin`, crear estadio, sectores y equipos. Luego ir a `/Admin/Eventos/Nuevo`, seleccionar estadio, equipos y sectores. Cada sector muestra su capacidad de solo lectura y pide “Precio por entrada”. La creación usa transacción y triggers de la base.
 
 Comprar: iniciar sesión como usuario general, abrir un evento programado y seleccionar cantidades por sector.
 
@@ -59,6 +68,7 @@ Crear DTOs/contratos en Application, reglas en servicios, SQL parametrizado en I
 - Login 429: rate limiting por intentos repetidos.
 - Usuario viejo no ingresa: `HashContrasena` está NULL.
 - Documento rechazado: revisar `CatalogosRegistro`.
+- Usuario con varios roles ve menú incorrecto: ir a `/Account/SeleccionarPerfil` y confirmar el perfil activo.
 
 ## Reglas para commits
 

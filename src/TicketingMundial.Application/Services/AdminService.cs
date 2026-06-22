@@ -251,9 +251,9 @@ public sealed class AdminService(
             return OperationResult<ulong>.Failure("Todos los sectores deben pertenecer al estadio seleccionado.");
         }
 
-        if (sectores.Any(sector => sector.PrecioBase < 0))
+        if (sectores.Any(sector => sector.PrecioBase <= 0))
         {
-            return OperationResult<ulong>.Failure("Los precios no pueden ser negativos.");
+            return OperationResult<ulong>.Failure("El precio por entrada debe ser mayor a cero.");
         }
 
         var normalized = command with

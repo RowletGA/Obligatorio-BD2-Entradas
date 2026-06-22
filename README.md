@@ -66,6 +66,13 @@ dotnet test TicketingMundial.sln
 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/TicketingMundial.Web
 ```
 
+En PowerShell, la variable de entorno se define así:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT="Development"
+dotnet run --project src/TicketingMundial.Web --urls "http://localhost:5000"
+```
+
 El health check esta disponible en `/health` y ejecuta solamente `SELECT 1;`.
 
 URLs principales:
@@ -76,6 +83,7 @@ URLs principales:
 - `/Account/Login`
 - `/Account/Register`
 - `/Dashboard`
+- `/Account/SeleccionarPerfil`
 - `/Admin`
 
 ## Registro
@@ -143,6 +151,10 @@ Roles emitidos en claims:
 
 Los roles se consultan en la base y no se aceptan desde formularios ni rutas.
 
+Si un usuario tiene un solo rol, la aplicación activa ese perfil automáticamente. Si tiene varios roles, después del login ve `/Account/SeleccionarPerfil` y elige con qué interfaz operar. El claim propio `PerfilActivo` solo controla navegación y dashboard; todos los roles reales permanecen como `ClaimTypes.Role` y los `[Authorize(Roles = "...")]` siguen siendo la protección de seguridad.
+
+Documento específico: `docs/PERFILES_Y_NAVEGACION.md`.
+
 ## Frontend de referencia
 
 La carpeta `frontejemplo/` se uso solo como referencia visual: paneles blancos, fondo slate claro, acento teal, navegacion lateral en desktop y navegacion horizontal en movil.
@@ -164,6 +176,7 @@ Las pruebas cubren:
 - escape de `LIKE`;
 - entradas maliciosas tratadas como texto;
 - traduccion de errores funcionales MySQL.
+- perfil activo, perfiles múltiples y formato monetario consistente.
 
 ## Limitacion de usuarios existentes
 

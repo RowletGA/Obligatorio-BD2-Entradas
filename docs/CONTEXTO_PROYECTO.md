@@ -6,8 +6,8 @@ TicketingMundial es una aplicación ASP.NET Core MVC para el obligatorio de Base
 
 Tecnologías y restricciones: .NET 8, Razor Views, autenticación por cookies, MySqlConnector, SQL manual parametrizado, sin Entity Framework, sin Dapper, sin ORM, sin migraciones automáticas y sin frameworks SPA.
 
-Estado actual: compila, ejecuta pruebas, registra usuarios generales reales, inicia/cierra sesión, emite roles por claims, muestra catálogo de eventos desde vistas, usa hash de contraseña y tiene registro parametrizable por catálogos de configuración.
-También cuenta con módulo administrativo inicial para estadios, sectores, equipos y creación transaccional de eventos.
+Estado actual: compila, ejecuta pruebas, registra usuarios generales reales, inicia/cierra sesión, emite roles por claims, maneja perfil activo para usuarios con múltiples roles, muestra catálogo de eventos desde vistas, usa hash de contraseña y tiene registro parametrizable por catálogos de configuración.
+También cuenta con módulo administrativo, compra, compras, entradas, transferencias, asignación de funcionarios, validación y reportes básicos.
 
 ## 2. Arquitectura
 
@@ -45,7 +45,9 @@ Registro: `/Account/Register` crea `Usuario`, `UsuarioGeneral` y `TelefonoUsuari
 
 Hash: `PasswordHasher<UsuarioAutenticacion>`. Login rechaza usuarios con `HashContrasena IS NULL`.
 
-Cookies: esquema `TicketingMundial.Auth`, `HttpOnly`, `SameSite=Lax`, expiración deslizante. Claims: documento, correo, nombre y roles `USUARIO_GENERAL`, `FUNCIONARIO`, `ADMINISTRADOR`.
+Cookies: esquema `TicketingMundial.Auth`, `HttpOnly`, `SameSite=Lax`, expiración deslizante. Claims: documento, correo, nombre, roles `USUARIO_GENERAL`, `FUNCIONARIO`, `ADMINISTRADOR` y, cuando corresponde, `PerfilActivo`.
+
+`PerfilActivo` no reemplaza autorización. Solo decide navegación y dashboard. Todos los roles reales permanecen como `ClaimTypes.Role` y cada endpoint conserva `[Authorize(Roles = "...")]`.
 
 ## 5. Flujos implementados
 
@@ -82,9 +84,16 @@ Administración:
 - Transacción: sí, para creación de evento.
 - Jurisdicción: `PaisSede` leído desde `Administrador`.
 
+Perfiles y navegación:
+
+- Pantalla: `Views/Account/SeleccionarPerfil.cshtml`.
+- Rutas: `/Account/SeleccionarPerfil`, `/Account/CambiarPerfil`.
+- Helpers: `PerfilActivoExtensions`.
+- Dashboard: redirige según `PerfilActivo`; si falta y hay múltiples roles, exige selección.
+
 ## 6. Reglas críticas
 
-- Máximo 5 entradas por venta: pendiente de implementar en flujo de compra; triggers son autoridad final.
+- Máximo 5 entradas por venta: implementado en formulario y servicio; triggers son autoridad final.
 - Capacidad: debe validarse contra `EventoSector`, `Sector` y triggers.
 - Comisión y monto total: no sobrescribir manualmente montos calculados por triggers.
 - Equipos distintos y conflicto horario: validar en servicio y respetar triggers.
@@ -121,7 +130,7 @@ Usar correos y documentos claramente artificiales. No borrar datos ajenos ni lim
 | Registro | Sí | - | - | `AccountController`, `UsuarioService`, `CatalogoRegistroService` | Catálogos configurables y teléfonos normalizados |
 | Login/logout | Sí | - | - | `AuthenticationService`, `UsuarioRepository` | Usuarios con hash NULL no ingresan |
 | Eventos lectura | Sí | - | - | `EventosController`, `EventoRepository` | Depende de datos visibles en DB |
-| Administración | Sí | Funcionarios/reportes pendientes | Baja física y edición avanzada de eventos | `AdminController`, `AdminService`, `AdminRepository` | Respeta país del administrador |
+| Administración | Sí | Baja física no implementada | Edición avanzada de eventos | `AdminController`, `AdminService`, `AdminRepository` | Respeta país del administrador |
 | Compra | Sí | Falta E2E real documentado | Medios de pago reales | `OperativaRepository` | No confía en precios del cliente |
 | Compras/entradas | Sí | - | - | `OperativaRepository` | Usa claims y `V_PropietarioActual` |
 | Transferencias | Sí | Falta E2E real documentado | Notificaciones | `OperativaRepository` | Triggers son autoridad final |
@@ -130,12 +139,10 @@ Usar correos y documentos claramente artificiales. No borrar datos ajenos ni lim
 
 ## 11. Próximos pasos
 
-1. Implementar administración de estadios, sectores y equipos.
-2. Implementar creación transaccional de eventos.
-3. Implementar compra real de entradas.
-4. Implementar área de usuario, transferencias y validación.
-5. Implementar reportes.
-6. Actualizar este documento después de cada iteración.
+1. Mantener datos demo controlados para defensa.
+2. Agregar QR/cámara solo si se decide abordar opcionales.
+3. Revisar UX fina si aparecen nuevos hallazgos manuales.
+4. Actualizar este documento después de cada iteración.
 
 ## 12. Instrucciones para otra IA
 

@@ -36,3 +36,5 @@ Revision estatica de repositorios y acceso a base. No se detecto uso de ORM, Dap
 - `SqlSafety.NormalizePagination` limita paginas futuras.
 - Busquedas LIKE escapan `%`, `_` y `\`.
 - Los valores maliciosos probados se tratan como texto y se entregan a repositorios/servicios como parametros, no como fragmentos SQL.
+- El cambio de perfil activo no consulta SQL ni otorga permisos: valida el perfil solicitado contra roles reales de la cookie y conserva los `[Authorize(Roles = "...")]`.
+- El formulario de evento no confía en capacidad enviada por el navegador; los sectores válidos se vuelven a consultar por estadio y jurisdicción antes de insertar `EventoSector`.

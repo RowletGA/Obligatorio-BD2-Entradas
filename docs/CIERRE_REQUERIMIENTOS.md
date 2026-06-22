@@ -11,6 +11,8 @@
 | Funcionario asignado | Obligatorio | PARCIAL | `/Admin/Funcionarios` | AdminController | OperativaService | OperativaRepository | FuncionarioEventoSector | V_ValidacionesPorFuncionario | FK EventoSector | Implementado | Requiere funcionario demo |
 | Validación | Obligatorio | PARCIAL | `/Funcionario/Validar` | FuncionarioController | OperativaService | OperativaRepository | Validacion, Entrada | V_ValidacionEntrada | validación insert/update | Implementado | Falta doble validación real |
 | Reportes básicos | Obligatorio | CUMPLIDO | `/Admin/Reportes` | ReportesController | OperativaService | OperativaRepository | Venta, Entrada, Evento | - | - | Ruta implementada | Sin gráficos |
+| Perfil activo | Pulido funcional | CUMPLIDO | `/Account/SeleccionarPerfil` | AccountController, DashboardController | - | - | - | - | - | Tests y navegación revisada | No sustituye autorización por roles |
+| Formulario evento: capacidad/precio | Corrección manual | CUMPLIDO | `/Admin/Eventos/Nuevo` | AdminController | AdminService | AdminRepository | Sector, EventoSector | - | trg_eventosector_before_insert | Capacidad solo lectura y precio validado | No edita capacidad desde evento |
 | QR dinámico | Opcional | OPCIONAL NO IMPLEMENTADO | - | - | - | - | - | - | - | No aplica | Documentado como futuro |
 | Cámara | Opcional | OPCIONAL NO IMPLEMENTADO | - | - | - | - | - | - | - | No aplica | Fuera de alcance |
 | Dispositivos autorizados | Opcional | OPCIONAL NO IMPLEMENTADO | - | - | - | - | - | - | - | No aplica | No modelado en scripts |

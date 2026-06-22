@@ -1,0 +1,28 @@
+@model SeleccionarPerfilViewModel
+@{
+    ViewData["Title"] = "Seleccionar perfil";
+}
+
+<section class="page-heading">
+    <p class="section-kicker">Perfil activo</p>
+    <h1>Seleccioná cómo querés operar</h1>
+    <p class="text-secondary mb-0">Podés cambiar de perfil desde la navegación sin cerrar sesión.</p>
+</section>
+
+<section class="profile-choice-grid">
+    @foreach (var perfil in Model.Perfiles)
+    {
+        var activo = perfil.Codigo == Model.PerfilActivo;
+        <form asp-action="CambiarPerfil" method="post" class="profile-choice-card @(activo ? "is-active" : "")">
+            <input type="hidden" name="perfil" value="@perfil.Codigo" />
+            <div>
+                <span>@(activo ? "Perfil actual" : "Disponible")</span>
+                <h2>@perfil.Nombre</h2>
+                <p>@perfil.Descripcion</p>
+            </div>
+            <button type="submit" class="btn @(activo ? "btn-outline-primary" : "btn-primary")">
+                Operar como @perfil.Nombre
+            </button>
+        </form>
+    }
+</section>

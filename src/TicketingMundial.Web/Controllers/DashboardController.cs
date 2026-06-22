@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicketingMundial.Domain.Identity;
@@ -10,19 +12,32 @@ namespace TicketingMundial.Web.Controllers;
 [Authorize]
 public sealed class DashboardController : Controller
 {
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        if (User.IsInRole(RolesAplicacion.Administrador))
+        var roles = User.GetRolesReales();
+        if (roles.Count == 0)
         {
-            return RedirectToAction(nameof(Administrador));
+            return RedirectToAction("Denied", "Account");
         }
 
-        if (User.IsInRole(RolesAplicacion.Funcionario))
+        var perfilActivo = User.GetPerfilActivo();
+        if (perfilActivo is null || !roles.Contains(perfilActivo))
         {
-            return RedirectToAction(nameof(Funcionario));
+            if (roles.Count > 1)
+            {
+                return RedirectToAction("SeleccionarPerfil", "Account");
+            }
+
+            perfilActivo = roles[0];
+            await EmitirCookieConPerfilActivoAsync(perfilActivo);
         }
 
-        return RedirectToAction(nameof(Usuario));
+        return perfilActivo switch
+        {
+            RolesAplicacion.Administrador => RedirectToAction(nameof(Administrador)),
+            RolesAplicacion.Funcionario => RedirectToAction(nameof(Funcionario)),
+            _ => RedirectToAction(nameof(Usuario))
+        };
     }
 
     [Authorize(Roles = RolesAplicacion.UsuarioGeneral)]
@@ -54,5 +69,19 @@ public sealed class DashboardController : Controller
             PaisDocumento = User.GetPaisDocumento(),
             NumeroDocumento = User.GetNumeroDocumento()
         };
+    }
+
+    private async Task EmitirCookieConPerfilActivoAsync(string perfilActivo)
+    {
+        var authenticateResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        var claims = User.Claims
+            .Where(claim => claim.Type != PerfilActivoExtensions.ClaimType)
+            .Append(new Claim(PerfilActivoExtensions.ClaimType, perfilActivo))
+            .ToArray();
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+        var properties = authenticateResult.Properties ?? new AuthenticationProperties { AllowRefresh = true };
+
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, properties);
     }
 }

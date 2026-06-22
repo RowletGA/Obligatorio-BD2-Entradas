@@ -1,10 +1,10 @@
+@using TicketingMundial.Web.Extensions
 @{
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
-    var dashboardAction = User.IsInRole(RolesAplicacion.Administrador)
-        ? "Administrador"
-        : User.IsInRole(RolesAplicacion.Funcionario)
-            ? "Funcionario"
-            : "Usuario";
+    IReadOnlyList<string> rolesReales = isAuthenticated ? User.GetRolesReales() : Array.Empty<string>();
+    var perfilActivo = isAuthenticated ? User.GetPerfilActivoSeguro() : null;
+    var tieneMultiplesPerfiles = isAuthenticated && rolesReales.Count > 1;
+    var nombrePerfilActivo = perfilActivo is null ? "Seleccionar perfil" : PerfilActivoExtensions.GetNombrePerfil(perfilActivo);
 }
 <!doctype html>
 <html lang="es">
@@ -26,21 +26,30 @@
             @if (isAuthenticated)
             {
                 <div class="role-card">
-                    <span>Sesión activa</span>
+                    <span>Perfil activo</span>
                     <strong>@User.Identity?.Name</strong>
-                    <small>@string.Join(", ", User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(r => r.Value))</small>
+                    <small>@nombrePerfilActivo</small>
                 </div>
             }
 
             <nav class="app-nav">
-                <a asp-controller="Home" asp-action="Index">Inicio</a>
-                <a asp-controller="Eventos" asp-action="Index">Eventos</a>
                 @if (!isAuthenticated)
                 {
+                    <a asp-controller="Home" asp-action="Index">Inicio</a>
+                    <a asp-controller="Eventos" asp-action="Index">Eventos</a>
                     <a asp-controller="Account" asp-action="Login">Iniciar sesión</a>
                     <a asp-controller="Account" asp-action="Register">Registrarse</a>
                 }
-                else if (User.IsInRole(RolesAplicacion.Administrador))
+                else if (perfilActivo == RolesAplicacion.UsuarioGeneral)
+                {
+                    <a asp-controller="Home" asp-action="Index">Inicio</a>
+                    <a asp-controller="Eventos" asp-action="Index">Eventos</a>
+                    <a asp-controller="Compras" asp-action="Index">Mis compras</a>
+                    <a asp-controller="Entradas" asp-action="MisEntradas">Mis entradas</a>
+                    <a asp-controller="Transferencias" asp-action="Index">Transferencias</a>
+                    <a asp-controller="Account" asp-action="Profile">Mi perfil</a>
+                }
+                else if (perfilActivo == RolesAplicacion.Administrador)
                 {
                     <a asp-controller="Admin" asp-action="Index">Dashboard</a>
                     <a asp-controller="Admin" asp-action="Estadios">Estadios</a>
@@ -50,17 +59,22 @@
                     <a asp-controller="Admin" asp-action="Funcionarios">Funcionarios</a>
                     <a asp-controller="Reportes" asp-action="Index">Reportes</a>
                 }
-                else if (User.IsInRole(RolesAplicacion.Funcionario))
+                else if (perfilActivo == RolesAplicacion.Funcionario)
                 {
+                    <a asp-controller="Funcionario" asp-action="Index">Dashboard</a>
                     <a asp-controller="Funcionario" asp-action="Index">Eventos asignados</a>
+                    <a asp-controller="Funcionario" asp-action="Index">Sectores asignados</a>
                     <a asp-controller="Funcionario" asp-action="Validar">Validar entrada</a>
+                    <a asp-controller="Funcionario" asp-action="Validar">Historial de validaciones</a>
                 }
-                else if (User.IsInRole(RolesAplicacion.UsuarioGeneral))
+                else
                 {
-                    <a asp-controller="Entradas" asp-action="MisEntradas">Mis entradas</a>
-                    <a asp-controller="Compras" asp-action="Index">Mis compras</a>
-                    <a asp-controller="Transferencias" asp-action="Index">Transferencias</a>
-                    <a asp-controller="Account" asp-action="Profile">Mi perfil</a>
+                    <a asp-controller="Account" asp-action="SeleccionarPerfil">Seleccionar perfil</a>
+                }
+
+                @if (tieneMultiplesPerfiles)
+                {
+                    <a asp-controller="Account" asp-action="SeleccionarPerfil">Cambiar perfil</a>
                 }
             </nav>
 
@@ -82,13 +96,21 @@
                 <a asp-controller="Eventos" asp-action="Index">Eventos</a>
                 @if (!isAuthenticated)
                 {
-                    <a asp-controller="Account" asp-action="Login">Ingresar</a>
-                    <a asp-controller="Account" asp-action="Register">Registro</a>
+                    <a asp-controller="Account" asp-action="Login">Iniciar sesión</a>
+                    <a asp-controller="Account" asp-action="Register">Registrarse</a>
                 }
                 else
                 {
-                    <a asp-controller="Dashboard" asp-action="@dashboardAction">Dashboard</a>
-                    <a asp-controller="Account" asp-action="Profile">Perfil</a>
+                    <a asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+                    @if (perfilActivo == RolesAplicacion.UsuarioGeneral)
+                    {
+                        <a asp-controller="Compras" asp-action="Index">Mis compras</a>
+                        <a asp-controller="Entradas" asp-action="MisEntradas">Mis entradas</a>
+                    }
+                    @if (tieneMultiplesPerfiles)
+                    {
+                        <a asp-controller="Account" asp-action="SeleccionarPerfil">Cambiar perfil</a>
+                    }
                 }
             </div>
         </header>

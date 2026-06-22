@@ -10,7 +10,7 @@ Todas las acciones están en `AdminController` con `[Authorize(Roles = "ADMINIST
 
 ## Navegación
 
-El layout muestra para administradores: Dashboard, Estadios, Sectores, Equipos, Eventos, Funcionarios y Reportes. Funcionarios y Reportes siguen como módulos pendientes.
+El layout muestra para el perfil activo `ADMINISTRADOR`: Dashboard, Estadios, Sectores, Equipos, Eventos, Funcionarios y Reportes. Si el mismo usuario también es comprador o funcionario, debe cambiar de perfil desde el selector; no se mezclan opciones comerciales con opciones administrativas.
 
 ## Estadios
 
@@ -35,6 +35,10 @@ Funcionalidades: listado, alta y edición. El país sale del catálogo versionad
 Usa `Evento`, `EventoLocal`, `EventoVisita` y `EventoSector`.
 
 El alta se realiza con una única transacción: se inserta el evento, luego equipo local, visitante y sectores con precio. Si falla cualquier paso se hace rollback.
+
+En el formulario de evento, `Sector.Capacidad` se muestra solo como dato informativo. La capacidad pertenece al sector y no se edita al crear un evento.
+
+El campo editable por sector es `EventoSector.PrecioBase`, presentado como “Precio por entrada”. Debe ser mayor a cero y solo es obligatorio cuando el sector está marcado como habilitado. El servidor vuelve a consultar sectores del estadio y no confía en capacidad ni sector enviados desde el navegador.
 
 ## Triggers relevantes
 

@@ -28,6 +28,37 @@ Usar datos demo identificables. No incluir contraseñas ni documentos reales.
 24. Intentar validarla por segunda vez y confirmar rechazo funcional.
 25. Como administrador, abrir `/Admin/Reportes`.
 
+## Casos de perfiles
+
+Caso A, usuario general solamente:
+
+1. Iniciar sesión.
+2. Confirmar navegación con Inicio, Eventos, Mis compras, Mis entradas, Transferencias y Mi perfil.
+3. Ver eventos, comprar, revisar compras y entradas.
+
+Caso B, administrador solamente:
+
+1. Iniciar sesión.
+2. Confirmar navegación administrativa sin Inicio, Mis compras ni Mis entradas.
+3. Crear o revisar evento y confirmar capacidad visible con precio por entrada claramente etiquetado.
+
+Caso C, administrador y usuario general:
+
+1. Iniciar sesión.
+2. Elegir Administrador en `/Account/SeleccionarPerfil`.
+3. Confirmar navegación administrativa.
+4. Cambiar a Usuario General desde el menú.
+5. Confirmar navegación comercial.
+6. Volver a Administrador sin cerrar sesión.
+
+Caso D, funcionario y usuario general:
+
+1. Iniciar sesión.
+2. Elegir Funcionario.
+3. Confirmar asignaciones y validación.
+4. Cambiar a Usuario General.
+5. Confirmar compras, entradas y transferencias.
+
 Resultado esperado:
 
 - Compra confirmada.

@@ -40,7 +40,7 @@
                 <tbody>
                 @foreach (var sector in Model.Sectores)
                 {
-                    <tr><td>@sector.NombreSector</td><td>@sector.PrecioBase.ToString("C")</td></tr>
+                    <tr><td>@sector.NombreSector</td><td>@MoneyFormatter.Format(sector.PrecioBase)</td></tr>
                 }
                 </tbody>
             </table>

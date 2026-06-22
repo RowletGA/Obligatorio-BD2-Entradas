@@ -15,5 +15,6 @@
     <ProjectReference Include="..\..\src\TicketingMundial.Application\TicketingMundial.Application.csproj" />
     <ProjectReference Include="..\..\src\TicketingMundial.Domain\TicketingMundial.Domain.csproj" />
     <ProjectReference Include="..\..\src\TicketingMundial.Infrastructure\TicketingMundial.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\TicketingMundial.Web\TicketingMundial.Web.csproj" />
   </ItemGroup>
 </Project>

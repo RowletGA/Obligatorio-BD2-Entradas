@@ -98,6 +98,25 @@ public sealed class AdminServiceTests
         Assert.Contains("sectores", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task CrearEventoAsync_RechazaPrecioCero()
+    {
+        var service = CreateService(new FakeAdminRepository());
+
+        var result = await service.CrearEventoAsync(AdminDocumento, new EventoCreateCommand
+        {
+            Fecha = DateOnly.FromDateTime(DateTime.Today.AddDays(2)),
+            Hora = new TimeOnly(20, 0),
+            IdEstadio = 1,
+            IdEquipoLocal = 10,
+            IdEquipoVisitante = 11,
+            Sectores = [new EventoSectorCreateCommand { IdSector = 2, PrecioBase = 0 }]
+        }, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("precio", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static AdminService CreateService(IAdminRepository repository)
     {
         var catalogo = new CatalogoRegistroService(Options.Create(new CatalogosRegistroOptions
