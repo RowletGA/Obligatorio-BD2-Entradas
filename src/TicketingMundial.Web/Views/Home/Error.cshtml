@@ -1,0 +1,13 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+<div class="content-panel">
+    <h1 class="h4">No fue posible completar la operacion</h1>
+    <p class="text-secondary mb-0">Intente nuevamente. Si el problema continua, revise los logs de la aplicacion.</p>
+    @if (Model.ShowRequestId)
+    {
+        <p class="small text-secondary mt-3 mb-0">RequestId: <code>@Model.RequestId</code></p>
+    }
+</div>

@@ -1,0 +1,71 @@
+@model EventoCreateViewModel
+@{
+    ViewData["Title"] = "Crear evento";
+}
+
+<section class="page-heading"><p class="section-kicker">Eventos</p><h1>Crear evento</h1></section>
+<form method="post" class="content-panel register-form">
+    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+    <fieldset class="form-section">
+        <legend>Datos del evento</legend>
+        <div>
+            <label asp-for="Fecha" class="form-label"></label>
+            <input asp-for="Fecha" class="form-control" type="date" />
+            <span asp-validation-for="Fecha" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="Hora" class="form-label"></label>
+            <input asp-for="Hora" class="form-control" type="time" />
+            <span asp-validation-for="Hora" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="EstadoEvento" class="form-label">Estado inicial</label>
+            <select asp-for="EstadoEvento" asp-items="Model.Estados" class="form-select"></select>
+            <span asp-validation-for="EstadoEvento" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="IdEstadio" class="form-label">Estadio</label>
+            <select asp-for="IdEstadio" asp-items="Model.Estadios" class="form-select" onchange="this.form.method='get'; this.form.submit();"><option value="">Seleccioná un estadio</option></select>
+            <span asp-validation-for="IdEstadio" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="IdEquipoLocal" class="form-label">Equipo local</label>
+            <select asp-for="IdEquipoLocal" asp-items="Model.Equipos" class="form-select"><option value="">Seleccioná equipo</option></select>
+            <span asp-validation-for="IdEquipoLocal" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="IdEquipoVisitante" class="form-label">Equipo visitante</label>
+            <select asp-for="IdEquipoVisitante" asp-items="Model.Equipos" class="form-select"><option value="">Seleccioná equipo</option></select>
+            <span asp-validation-for="IdEquipoVisitante" class="text-danger small"></span>
+        </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+        <legend>Sectores habilitados</legend>
+        @if (Model.Sectores.Count == 0)
+        {
+            <p class="text-secondary mb-0">Seleccioná un estadio con sectores cargados para habilitar precios.</p>
+        }
+        else
+        {
+            @for (var i = 0; i < Model.Sectores.Count; i++)
+            {
+                <div>
+                    <input type="hidden" asp-for="Sectores[i].IdSector" />
+                    <input type="hidden" asp-for="Sectores[i].NombreSector" />
+                    <div class="form-check">
+                        <input asp-for="Sectores[i].Seleccionado" class="form-check-input" />
+                        <label asp-for="Sectores[i].Seleccionado" class="form-check-label">@Model.Sectores[i].NombreSector</label>
+                    </div>
+                    <input asp-for="Sectores[i].PrecioBase" class="form-control mt-2" type="number" step="0.01" min="0" placeholder="Precio base" />
+                    <span asp-validation-for="Sectores[i].PrecioBase" class="text-danger small"></span>
+                </div>
+            }
+        }
+    </fieldset>
+    <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-primary">Crear evento</button>
+        <a class="btn btn-outline-secondary" asp-action="Eventos">Cancelar</a>
+    </div>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

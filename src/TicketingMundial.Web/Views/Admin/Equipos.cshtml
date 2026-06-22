@@ -1,0 +1,37 @@
+@model AdminListViewModel<EquipoAdminDto>
+@{
+    ViewData["Title"] = "Equipos";
+}
+
+<section class="page-heading"><p class="section-kicker">Administración</p><h1>Equipos</h1></section>
+<section class="content-panel">
+    <div class="section-toolbar">
+        <form method="get" class="d-flex gap-2">
+            <input name="q" value="@Model.Busqueda" class="form-control" placeholder="Buscar país o grupo" />
+            <button class="btn btn-outline-primary">Buscar</button>
+        </form>
+        <a class="btn btn-primary" asp-action="NuevoEquipo">Registrar equipo</a>
+    </div>
+    @if (Model.Results.Items.Count == 0)
+    {
+        <p class="text-secondary mt-3 mb-0">No hay equipos para mostrar.</p>
+    }
+    else
+    {
+        <div class="table-responsive mt-3">
+            <table class="table align-middle">
+                <thead><tr><th>País</th><th>Grupo</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var item in Model.Results.Items)
+                {
+                    <tr>
+                        <td>@item.Pais</td>
+                        <td>@(item.Grupo ?? "-")</td>
+                        <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-action="EditarEquipo" asp-route-id="@item.IdEquipo">Editar</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

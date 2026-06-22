@@ -1,0 +1,31 @@
+@model SectorFormViewModel
+@{
+    ViewData["Title"] = Model.IdSector.HasValue ? "Editar sector" : "Crear sector";
+}
+
+<section class="page-heading"><p class="section-kicker">Sectores</p><h1>@ViewData["Title"]</h1></section>
+<form method="post" class="content-panel register-form">
+    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+    <div class="form-section">
+        <div>
+            <label asp-for="IdEstadio" class="form-label">Estadio</label>
+            <select asp-for="IdEstadio" asp-items="Model.Estadios" class="form-select"><option value="">Seleccioná un estadio</option></select>
+            <span asp-validation-for="IdEstadio" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="NombreSector" class="form-label">Nombre</label>
+            <input asp-for="NombreSector" class="form-control" />
+            <span asp-validation-for="NombreSector" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="Capacidad" class="form-label"></label>
+            <input asp-for="Capacidad" class="form-control" type="number" min="1" />
+            <span asp-validation-for="Capacidad" class="text-danger small"></span>
+        </div>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-primary">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-action="Sectores">Cancelar</a>
+    </div>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

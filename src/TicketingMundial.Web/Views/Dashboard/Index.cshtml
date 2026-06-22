@@ -1,0 +1,60 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<section class="mb-4">
+    <h1 class="h3 mb-1">@Model.Nombre</h1>
+    <div class="text-secondary">@Model.CorreoElectronico</div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="summary-tile">
+            <span>Documento</span>
+            <strong>@Model.TipoDocumento @Model.NumeroDocumento</strong>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="summary-tile">
+            <span>Pais documento</span>
+            <strong>@Model.PaisDocumento</strong>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="summary-tile">
+            <span>Perfiles</span>
+            <strong>@string.Join(", ", Model.Roles)</strong>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3">
+    @if (Model.Roles.Contains(RolesAplicacion.UsuarioGeneral))
+    {
+        <div class="col-12 col-lg-4">
+            <div class="content-panel h-100">
+                <h2 class="h5">Usuario general</h2>
+                <p class="text-secondary mb-0">Compras, entradas asignadas y transferencias quedan listas para la siguiente iteracion.</p>
+            </div>
+        </div>
+    }
+    @if (Model.Roles.Contains(RolesAplicacion.Funcionario))
+    {
+        <div class="col-12 col-lg-4">
+            <div class="content-panel h-100">
+                <h2 class="h5">Funcionario</h2>
+                <p class="text-secondary mb-0">Validacion de entradas y eventos asignados quedan listos para conectar al modulo operativo.</p>
+            </div>
+        </div>
+    }
+    @if (Model.Roles.Contains(RolesAplicacion.Administrador))
+    {
+        <div class="col-12 col-lg-4">
+            <div class="content-panel h-100">
+                <h2 class="h5">Administrador</h2>
+                <p class="text-secondary mb-0">Gestion de estadios, eventos y reportes queda reservada sobre los repositorios definidos.</p>
+            </div>
+        </div>
+    }
+</section>

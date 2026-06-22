@@ -1,0 +1,23 @@
+@model EstadioAdminDto
+@{
+    ViewData["Title"] = Model.Nombre;
+}
+
+<section class="page-heading">
+    <p class="section-kicker">Estadio</p>
+    <h1>@Model.Nombre</h1>
+    <p>@Model.UbicacionLocalidad, @Model.UbicacionPais</p>
+</section>
+
+<section class="content-panel">
+    <div class="detail-grid">
+        <div><span>Dirección</span><strong>@Model.UbicacionCalle @Model.UbicacionNumero</strong></div>
+        <div><span>Sectores</span><strong>@Model.Sectores</strong></div>
+        <div><span>Eventos</span><strong>@Model.Eventos</strong></div>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+        <a class="btn btn-primary" asp-action="NuevoSector" asp-route-idEstadio="@Model.IdEstadio">Agregar sector</a>
+        <a class="btn btn-outline-primary" asp-action="EditarEstadio" asp-route-id="@Model.IdEstadio">Editar</a>
+        <a class="btn btn-outline-secondary" asp-action="Estadios">Volver</a>
+    </div>
+</section>

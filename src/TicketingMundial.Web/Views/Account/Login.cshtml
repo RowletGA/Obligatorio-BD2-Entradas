@@ -1,0 +1,39 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Ingresar";
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-md-7 col-lg-5">
+        <div class="content-panel">
+            <p class="section-kicker">Acceso seguro</p>
+            <h1 class="h3 mb-3">Iniciar sesión</h1>
+            <form asp-action="Login" method="post" novalidate>
+                <input type="hidden" asp-for="ReturnUrl" />
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                <div class="mb-3">
+                    <label asp-for="CorreoElectronico" class="form-label"></label>
+                    <input asp-for="CorreoElectronico" class="form-control" autocomplete="email" />
+                    <span asp-validation-for="CorreoElectronico" class="text-danger small"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label"></label>
+                    <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+                <div class="form-check mb-3">
+                    <input asp-for="RememberMe" class="form-check-input" />
+                    <label asp-for="RememberMe" class="form-check-label"></label>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+                <p class="text-secondary small mt-3 mb-0">
+                    Los usuarios existentes sin hash de contraseña deben definir una contraseña antes de poder ingresar.
+                </p>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

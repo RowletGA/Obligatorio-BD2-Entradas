@@ -1,0 +1,16 @@
+bin/
+obj/
+.DS_Store
+.vs/
+.vscode/
+*.user
+*.suo
+*.rsuser
+TestResults/
+coverage/
+src/TicketingMundial.Web/appsettings.Development.json
+
+appsettings.Development.json
+.env
+.env.*
+!.env.example

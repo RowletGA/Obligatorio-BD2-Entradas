@@ -1,0 +1,49 @@
+@model EventoAdminDto
+@{
+    ViewData["Title"] = $"Evento {Model.IdEvento}";
+}
+
+<section class="page-heading">
+    <p class="section-kicker">Evento</p>
+    <h1>@Model.EquipoLocal vs @Model.EquipoVisitante</h1>
+    <p>@Model.FechaHora.ToString("f") · @Model.Estadio</p>
+</section>
+
+<section class="content-panel mb-3">
+    <div class="detail-grid">
+        <div><span>Estado</span><strong>@Model.EstadoEvento</strong></div>
+        <div><span>Estadio</span><strong>@Model.Estadio</strong></div>
+        <div><span>País</span><strong>@Model.PaisEstadio</strong></div>
+    </div>
+    <form asp-action="CambiarEstadoEvento" asp-route-id="@Model.IdEvento" method="post" class="d-flex flex-wrap gap-2 mt-3">
+        <select name="EstadoEvento" class="form-select" style="max-width: 220px">
+            @foreach (var estado in new[] { "PROGRAMADO", "EN_CURSO", "FINALIZADO", "CANCELADO" })
+            {
+                <option value="@estado" selected="@(estado == Model.EstadoEvento)">@estado</option>
+            }
+        </select>
+        <button class="btn btn-outline-primary">Cambiar estado</button>
+    </form>
+</section>
+
+<section class="content-panel">
+    <h2 class="h5">Sectores habilitados</h2>
+    @if (Model.Sectores.Count == 0)
+    {
+        <p class="text-secondary mb-0">Este evento no tiene sectores habilitados.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead><tr><th>Sector</th><th>Precio base</th></tr></thead>
+                <tbody>
+                @foreach (var sector in Model.Sectores)
+                {
+                    <tr><td>@sector.NombreSector</td><td>@sector.PrecioBase.ToString("C")</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

@@ -1,0 +1,36 @@
+@model AdminListViewModel<EventoAdminDto>
+@{
+    ViewData["Title"] = "Eventos";
+}
+
+<section class="page-heading"><p class="section-kicker">Administración</p><h1>Eventos</h1></section>
+<section class="content-panel">
+    <div class="section-toolbar">
+        <p class="text-secondary mb-0">Eventos de la jurisdicción del administrador.</p>
+        <a class="btn btn-primary" asp-action="NuevoEvento">Crear evento</a>
+    </div>
+    @if (Model.Results.Items.Count == 0)
+    {
+        <p class="text-secondary mt-3 mb-0">No hay eventos para mostrar.</p>
+    }
+    else
+    {
+        <div class="table-responsive mt-3">
+            <table class="table align-middle">
+                <thead><tr><th>Fecha</th><th>Estadio</th><th>Partido</th><th>Estado</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var item in Model.Results.Items)
+                {
+                    <tr>
+                        <td>@item.FechaHora.ToString("g")</td>
+                        <td>@item.Estadio</td>
+                        <td>@item.EquipoLocal vs @item.EquipoVisitante</td>
+                        <td><span class="badge text-bg-secondary">@item.EstadoEvento</span></td>
+                        <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-action="EventoDetalle" asp-route-id="@item.IdEvento">Ver</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

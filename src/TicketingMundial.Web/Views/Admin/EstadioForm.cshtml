@@ -1,0 +1,46 @@
+@model EstadioFormViewModel
+@{
+    ViewData["Title"] = Model.IdEstadio.HasValue ? "Editar estadio" : "Registrar estadio";
+}
+
+<section class="page-heading">
+    <p class="section-kicker">Estadios</p>
+    <h1>@ViewData["Title"]</h1>
+</section>
+
+<form method="post" class="content-panel register-form">
+    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+    <div class="form-section">
+        <div>
+            <label asp-for="Nombre" class="form-label"></label>
+            <input asp-for="Nombre" class="form-control" />
+            <span asp-validation-for="Nombre" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="UbicacionPais" class="form-label"></label>
+            <select asp-for="UbicacionPais" asp-items="Model.Paises" class="form-select"></select>
+            <span asp-validation-for="UbicacionPais" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="UbicacionLocalidad" class="form-label"></label>
+            <input asp-for="UbicacionLocalidad" class="form-control" />
+            <span asp-validation-for="UbicacionLocalidad" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="UbicacionCalle" class="form-label"></label>
+            <input asp-for="UbicacionCalle" class="form-control" />
+            <span asp-validation-for="UbicacionCalle" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="UbicacionNumero" class="form-label"></label>
+            <input asp-for="UbicacionNumero" class="form-control" />
+            <span asp-validation-for="UbicacionNumero" class="text-danger small"></span>
+        </div>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-primary">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-action="Estadios">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

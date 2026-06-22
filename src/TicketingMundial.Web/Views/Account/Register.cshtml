@@ -1,0 +1,138 @@
+@model RegisterViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Registro";
+    var tiposDocumentoJson = JsonSerializer.Serialize(Model.TiposDocumentoCatalogo.Select(tipo => new
+    {
+        codigo = tipo.Codigo,
+        nombre = tipo.Nombre,
+        paisesPermitidos = tipo.PaisesPermitidos,
+        longitudMaxima = tipo.LongitudMaxima,
+        ayuda = tipo.Ayuda
+    }));
+}
+
+<section class="page-heading">
+    <p class="section-kicker">Usuario general</p>
+    <h1>Registro</h1>
+    <p>Creá tu cuenta para comprar, recibir y administrar tus entradas.</p>
+</section>
+
+<form asp-action="Register" method="post" class="content-panel register-form" novalidate data-register-form data-document-types="@tiposDocumentoJson">
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+    <fieldset class="form-section">
+        <legend>Documento</legend>
+        <div>
+            <label asp-for="PaisDocumento" class="form-label"></label>
+            <select asp-for="PaisDocumento" asp-items="Model.PaisesDocumento" class="form-select" data-document-country>
+                <option value="">Seleccioná un país</option>
+            </select>
+            <span asp-validation-for="PaisDocumento" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="TipoDocumento" class="form-label"></label>
+            <select asp-for="TipoDocumento" asp-items="Model.TiposDocumento" class="form-select" data-document-type>
+                <option value="">Seleccioná un tipo</option>
+            </select>
+            <span asp-validation-for="TipoDocumento" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="NumeroDocumento" class="form-label"></label>
+            <input asp-for="NumeroDocumento" class="form-control" maxlength="30" data-document-number />
+            <p class="form-text" data-document-help>Seleccioná país y tipo de documento para ver el formato esperado.</p>
+            <span asp-validation-for="NumeroDocumento" class="text-danger small"></span>
+        </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+        <legend>Datos personales</legend>
+        <div>
+            <label asp-for="PrimerNombre" class="form-label"></label>
+            <input asp-for="PrimerNombre" class="form-control" maxlength="60" />
+            <span asp-validation-for="PrimerNombre" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="PrimerApellido" class="form-label"></label>
+            <input asp-for="PrimerApellido" class="form-control" maxlength="60" />
+            <span asp-validation-for="PrimerApellido" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="CorreoElectronico" class="form-label"></label>
+            <input asp-for="CorreoElectronico" class="form-control" maxlength="254" autocomplete="email" />
+            <span asp-validation-for="CorreoElectronico" class="text-danger small"></span>
+        </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+        <legend>Dirección</legend>
+        <div>
+            <label asp-for="DireccionPais" class="form-label"></label>
+            <select asp-for="DireccionPais" asp-items="Model.PaisesDireccion" class="form-select">
+                <option value="">Seleccioná un país</option>
+            </select>
+            <span asp-validation-for="DireccionPais" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="DireccionLocalidad" class="form-label"></label>
+            <input asp-for="DireccionLocalidad" class="form-control" maxlength="100" />
+            <span asp-validation-for="DireccionLocalidad" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="DireccionCalle" class="form-label"></label>
+            <input asp-for="DireccionCalle" class="form-control" maxlength="100" />
+            <span asp-validation-for="DireccionCalle" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="DireccionNumero" class="form-label"></label>
+            <input asp-for="DireccionNumero" class="form-control" maxlength="20" />
+            <span asp-validation-for="DireccionNumero" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="DireccionCodigoPostal" class="form-label"></label>
+            <input asp-for="DireccionCodigoPostal" class="form-control" maxlength="15" />
+            <span asp-validation-for="DireccionCodigoPostal" class="text-danger small"></span>
+        </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+        <legend>Contacto</legend>
+        <div class="section-toolbar">
+            <p class="form-text mb-0">Agregá al menos un teléfono. Podés usar prefijo internacional, espacios, guiones o paréntesis; se guardará normalizado.</p>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-add-phone>Agregar teléfono</button>
+        </div>
+        <span asp-validation-for="Telefonos" class="text-danger small"></span>
+        <div class="phone-list mt-3" data-phone-list>
+            @for (var i = 0; i < Model.Telefonos.Count; i++)
+            {
+                <div class="input-group mb-2" data-phone-row>
+                    <input name="Telefonos[@i]" value="@Model.Telefonos[i]" class="form-control" maxlength="24" inputmode="tel" autocomplete="tel" />
+                    <button type="button" class="btn btn-outline-secondary" data-remove-phone>Quitar</button>
+                </div>
+            }
+        </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+        <legend>Seguridad</legend>
+        <div>
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="Password" class="text-danger small"></span>
+        </div>
+        <div>
+            <label asp-for="ConfirmPassword" class="form-label"></label>
+            <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+        </div>
+    </fieldset>
+
+    <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Crear usuario</button>
+        <a class="btn btn-outline-secondary" asp-action="Login">Ya tengo usuario</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

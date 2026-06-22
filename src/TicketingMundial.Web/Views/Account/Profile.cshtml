@@ -1,0 +1,19 @@
+@model ProfileViewModel
+@{
+    ViewData["Title"] = "Mi perfil";
+}
+
+<section class="page-heading">
+    <p class="section-kicker">Perfil</p>
+    <h1>@Model.Nombre</h1>
+    <p>@Model.CorreoElectronico</p>
+</section>
+
+<section class="content-panel">
+    <div class="detail-grid">
+        <div><span>Tipo documento</span><strong>@Model.TipoDocumento</strong></div>
+        <div><span>País documento</span><strong>@Model.PaisDocumento</strong></div>
+        <div><span>Número</span><strong>@Model.NumeroDocumento</strong></div>
+        <div><span>Roles</span><strong>@string.Join(", ", Model.Roles)</strong></div>
+    </div>
+</section>

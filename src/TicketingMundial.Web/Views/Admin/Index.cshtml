@@ -1,0 +1,48 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Administración";
+}
+
+<section class="page-heading">
+    <p class="section-kicker">Administración</p>
+    <h1>Dashboard</h1>
+    <p>Jurisdicción activa: @Model.Dashboard.PaisSede</p>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="summary-tile"><span>Estadios</span><strong>@Model.Dashboard.Estadios</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="summary-tile"><span>Sectores</span><strong>@Model.Dashboard.Sectores</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="summary-tile"><span>Equipos</span><strong>@Model.Dashboard.Equipos</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="summary-tile"><span>Eventos</span><strong>@Model.Dashboard.Eventos</strong></div></div>
+</section>
+
+<section class="content-panel">
+    <div class="section-toolbar">
+        <h2 class="h5 mb-0">Próximos eventos</h2>
+        <a class="btn btn-primary btn-sm" asp-action="NuevoEvento">Crear evento</a>
+    </div>
+    @if (Model.Dashboard.ProximosEventos.Count == 0)
+    {
+        <p class="text-secondary mb-0 mt-3">No hay próximos eventos para mostrar.</p>
+    }
+    else
+    {
+        <div class="table-responsive mt-3">
+            <table class="table align-middle">
+                <thead><tr><th>Fecha</th><th>Estadio</th><th>Partido</th><th>Estado</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var evento in Model.Dashboard.ProximosEventos)
+                {
+                    <tr>
+                        <td>@evento.FechaHora.ToString("g")</td>
+                        <td>@evento.Estadio</td>
+                        <td>@evento.EquipoLocal vs @evento.EquipoVisitante</td>
+                        <td><span class="badge text-bg-secondary">@evento.EstadoEvento</span></td>
+                        <td><a asp-action="EventoDetalle" asp-route-id="@evento.IdEvento">Ver</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

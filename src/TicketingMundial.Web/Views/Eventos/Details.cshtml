@@ -1,0 +1,76 @@
+@model EventoDetalleViewModel
+@{
+    ViewData["Title"] = "Detalle de evento";
+    var evento = Model.Evento;
+}
+
+<section class="mb-4">
+    <a class="btn btn-link px-0" asp-action="Index">Volver</a>
+    <h1 class="h3 mb-1">@(evento.EquipoLocal ?? "Local") vs @(evento.EquipoVisitante ?? "Visitante")</h1>
+    <div class="text-secondary">@evento.FechaHora.ToString("dd/MM/yyyy HH:mm") - @evento.Estadio - @evento.LocalidadEstadio</div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="summary-tile">
+            <span>Estado</span>
+            <strong>@evento.Estado</strong>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="summary-tile">
+            <span>Estadio</span>
+            <strong>@evento.Estadio</strong>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="summary-tile">
+            <span>Sectores</span>
+            <strong>@evento.Sectores.Count</strong>
+        </div>
+    </div>
+</section>
+
+<section class="content-panel">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">Disponibilidad por sector</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Sector</th>
+                    <th class="text-end">Precio</th>
+                    <th class="text-end">Capacidad</th>
+                    <th class="text-end">Emitidas</th>
+                    <th class="text-end">Disponibles</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (evento.Sectores.Count == 0)
+            {
+                <tr>
+                    <td colspan="5" class="text-center text-secondary py-4">No hay sectores habilitados para este evento.</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var sector in evento.Sectores)
+                {
+                    <tr>
+                        <td class="fw-semibold">@sector.NombreSector</td>
+                        <td class="text-end">$ @sector.PrecioBase.ToString("N2")</td>
+                        <td class="text-end">@sector.Capacidad</td>
+                        <td class="text-end">@sector.EntradasEmitidas</td>
+                        <td class="text-end">
+                            <span class="badge @(sector.LugaresDisponibles > 0 ? "text-bg-success" : "text-bg-danger")">
+                                @sector.LugaresDisponibles
+                            </span>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

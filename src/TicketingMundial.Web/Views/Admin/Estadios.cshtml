@@ -1,0 +1,47 @@
+@model AdminListViewModel<EstadioAdminDto>
+@{
+    ViewData["Title"] = "Estadios";
+}
+
+<section class="page-heading">
+    <p class="section-kicker">Administración</p>
+    <h1>Estadios</h1>
+</section>
+
+<section class="content-panel">
+    <div class="section-toolbar">
+        <form method="get" class="d-flex gap-2">
+            <input name="q" value="@Model.Busqueda" class="form-control" placeholder="Buscar por nombre o localidad" />
+            <button class="btn btn-outline-primary">Buscar</button>
+        </form>
+        <a class="btn btn-primary" asp-action="NuevoEstadio">Registrar estadio</a>
+    </div>
+    @if (Model.Results.Items.Count == 0)
+    {
+        <p class="text-secondary mt-3 mb-0">No hay estadios para la búsqueda actual.</p>
+    }
+    else
+    {
+        <div class="table-responsive mt-3">
+            <table class="table align-middle">
+                <thead><tr><th>Nombre</th><th>Localidad</th><th>Dirección</th><th>Sectores</th><th>Eventos</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var item in Model.Results.Items)
+                {
+                    <tr>
+                        <td>@item.Nombre</td>
+                        <td>@item.UbicacionLocalidad</td>
+                        <td>@item.UbicacionCalle @item.UbicacionNumero</td>
+                        <td>@item.Sectores</td>
+                        <td>@item.Eventos</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-secondary btn-sm" asp-action="EstadioDetalle" asp-route-id="@item.IdEstadio">Ver</a>
+                            <a class="btn btn-outline-primary btn-sm" asp-action="EditarEstadio" asp-route-id="@item.IdEstadio">Editar</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

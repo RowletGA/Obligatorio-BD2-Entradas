@@ -1,0 +1,39 @@
+@model AdminListViewModel<SectorAdminDto>
+@{
+    ViewData["Title"] = "Sectores";
+}
+
+<section class="page-heading"><p class="section-kicker">Administración</p><h1>Sectores</h1></section>
+<section class="content-panel">
+    <div class="section-toolbar">
+        <form method="get" class="d-flex flex-wrap gap-2">
+            <select name="idEstadio" asp-items="Model.Estadios" class="form-select"><option value="">Todos los estadios</option></select>
+            <input name="q" value="@Model.Busqueda" class="form-control" placeholder="Buscar sector o estadio" />
+            <button class="btn btn-outline-primary">Filtrar</button>
+        </form>
+        <a class="btn btn-primary" asp-action="NuevoSector">Crear sector</a>
+    </div>
+    @if (Model.Results.Items.Count == 0)
+    {
+        <p class="text-secondary mt-3 mb-0">No hay sectores para mostrar.</p>
+    }
+    else
+    {
+        <div class="table-responsive mt-3">
+            <table class="table align-middle">
+                <thead><tr><th>Sector</th><th>Capacidad</th><th>Estadio</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var item in Model.Results.Items)
+                {
+                    <tr>
+                        <td>@item.NombreSector</td>
+                        <td>@item.Capacidad</td>
+                        <td>@item.Estadio</td>
+                        <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-action="EditarSector" asp-route-id="@item.IdSector">Editar</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

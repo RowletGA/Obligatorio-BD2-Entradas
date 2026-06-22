@@ -1,0 +1,11 @@
+@model PlaceholderViewModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<section class="content-panel placeholder-panel">
+    <p class="section-kicker">Funcionalidad en desarrollo</p>
+    <h1 class="h3">@Model.Title</h1>
+    <p class="text-secondary">@Model.Description</p>
+    <a class="btn btn-primary" asp-controller="Dashboard" asp-action="Index">Volver al dashboard</a>
+</section>

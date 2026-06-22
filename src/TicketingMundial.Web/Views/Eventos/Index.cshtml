@@ -1,0 +1,98 @@
+@model EventoIndexViewModel
+@{
+    ViewData["Title"] = "Eventos";
+    var desdeValue = Model.Desde?.ToString("yyyy-MM-ddTHH:mm");
+    var hastaValue = Model.Hasta?.ToString("yyyy-MM-ddTHH:mm");
+}
+
+<section class="mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+        <div>
+            <h1 class="h3 mb-1">Eventos</h1>
+            <p class="text-secondary mb-0">Partidos disponibles segun la base existente.</p>
+        </div>
+    </div>
+</section>
+
+@if (ViewData["Error"] is string error)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+
+<section class="content-panel mb-4">
+    <form method="get" asp-action="Index" class="row g-3 align-items-end">
+        <div class="col-12 col-md-6 col-xl-3">
+            <label for="desde" class="form-label">Desde</label>
+            <input id="desde" name="desde" type="datetime-local" class="form-control" value="@desdeValue" />
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <label for="hasta" class="form-label">Hasta</label>
+            <input id="hasta" name="hasta" type="datetime-local" class="form-control" value="@hastaValue" />
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <label for="idEstadio" class="form-label">Estadio</label>
+            <select id="idEstadio" name="idEstadio" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var estadio in Model.Estadios)
+                {
+                    <option value="@estadio.IdEstadio" selected="@(Model.IdEstadio == estadio.IdEstadio)">
+                        @estadio.Nombre - @estadio.Localidad
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-6 col-xl-2">
+            <label for="equipo" class="form-label">Equipo</label>
+            <input id="equipo" name="equipo" class="form-control" value="@Model.Equipo" />
+        </div>
+        <div class="col-12 col-xl-1 d-grid">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+        </div>
+    </form>
+</section>
+
+<section class="content-panel">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Evento</th>
+                    <th>Estadio</th>
+                    <th>Estado</th>
+                    <th class="text-end">Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Eventos.Count == 0)
+            {
+                <tr>
+                    <td colspan="5" class="text-center text-secondary py-4">No hay eventos para los filtros seleccionados.</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var evento in Model.Eventos)
+                {
+                    <tr>
+                        <td>@evento.FechaHora.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            <span class="fw-semibold">@(evento.EquipoLocal ?? "Local")</span>
+                            <span class="text-secondary">vs</span>
+                            <span class="fw-semibold">@(evento.EquipoVisitante ?? "Visitante")</span>
+                        </td>
+                        <td>
+                            <div>@evento.Estadio</div>
+                            <div class="small text-secondary">@evento.LocalidadEstadio, @evento.PaisEstadio</div>
+                        </td>
+                        <td><span class="badge text-bg-secondary">@evento.Estado</span></td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@evento.IdEvento">Ver</a>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

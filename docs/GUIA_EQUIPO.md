@@ -1,0 +1,61 @@
+# Guía del equipo
+
+## Qué hace
+
+TicketingMundial permite registrar usuarios, iniciar sesión, consultar eventos y preparar los flujos de compra, transferencia, validación y reportes contra la base MySQL del obligatorio.
+
+## Cómo levantarla
+
+```bash
+dotnet restore
+dotnet build TicketingMundial.sln
+dotnet test TicketingMundial.sln
+ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/TicketingMundial.Web --urls http://localhost:5000
+```
+
+Configurar `src/TicketingMundial.Web/appsettings.Development.json` desde `appsettings.example.json`. No compartir credenciales reales.
+
+## Cómo probar cada rol
+
+- Usuario general: registrarse en `/Account/Register` y luego ingresar en `/Account/Login`.
+- Administrador: requiere datos existentes en tablas `Usuario` y `Administrador`.
+- Funcionario: requiere datos existentes en tablas `Usuario` y `Funcionario`.
+
+## Registro
+
+Probar CI uruguaya, DNI argentino y pasaporte. El país y tipo de documento salen de `src/TicketingMundial.Web/catalogos-registro.json`. Los teléfonos se normalizan antes de guardar.
+
+## Eventos
+
+El catálogo está en `/Eventos`. Si no hay eventos visibles, cargar datos con el módulo administrativo cuando esté implementado o mediante datos autorizados por el equipo.
+
+## Crear evento
+
+Como administrador, abrir `/Admin`, crear estadio, sectores y equipos. Luego ir a `/Admin/Eventos/Nuevo`, seleccionar estadio, equipos, sectores y precios. La creación usa transacción y triggers de la base.
+
+Comprar, transferir y validar siguen pendientes. No simularlos en controladores ni agregar tablas.
+
+## Dónde está cada módulo
+
+- Controladores: `src/TicketingMundial.Web/Controllers`.
+- Vistas: `src/TicketingMundial.Web/Views`.
+- Servicios: `src/TicketingMundial.Application/Services`.
+- Repositorios: `src/TicketingMundial.Infrastructure/Repositories`.
+- Pruebas: `tests/TicketingMundial.Tests`.
+- Documentación larga: `docs/CONTEXTO_PROYECTO.md`.
+
+## Cómo agregar una funcionalidad
+
+Crear DTOs/contratos en Application, reglas en servicios, SQL parametrizado en Infrastructure y vistas/controladores en Web. No colocar SQL en controladores. No confiar en campos ocultos para usuario activo.
+
+## Errores frecuentes
+
+- `dotnet: command not found`: revisar SDK 8 y PATH.
+- `/health` falla: revisar connection string local.
+- Login 429: rate limiting por intentos repetidos.
+- Usuario viejo no ingresa: `HashContrasena` está NULL.
+- Documento rechazado: revisar `CatalogosRegistro`.
+
+## Reglas para commits
+
+No incluir secretos. No modificar scripts originales. Correr build y tests. Actualizar documentación si cambia un flujo, contrato o regla de base.

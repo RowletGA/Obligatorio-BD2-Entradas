@@ -1,0 +1,30 @@
+@{
+    ViewData["Title"] = "Inicio";
+}
+
+<section class="landing-grid">
+    <div>
+        <span class="eyebrow">Obligatorio BD2 · Mundial 2026</span>
+        <h1 class="landing-title">Ticketing deportivo con entradas dinámicas y acceso seguro.</h1>
+        <p class="landing-copy">
+            Plataforma cliente/servidor para consultar partidos, registrar usuarios, autenticar perfiles y preparar los flujos de compra, transferencia y validación.
+        </p>
+        <div class="action-row">
+            <a class="btn btn-primary btn-lg" asp-controller="Eventos" asp-action="Index">Ver eventos</a>
+            @if (User.Identity?.IsAuthenticated != true)
+            {
+                <a class="btn btn-outline-light btn-lg" asp-controller="Account" asp-action="Register">Registrarse</a>
+            }
+        </div>
+    </div>
+    <div class="hero-panel">
+        <p class="text-uppercase small fw-bold text-teal mb-2">Sistema activo</p>
+        <h2 class="h3 fw-black">Base MySQL existente</h2>
+        <p class="text-secondary">La app consulta vistas reales y respeta triggers como autoridad final.</p>
+        <div class="mini-metrics">
+            <div><strong>3</strong><span>perfiles</span></div>
+            <div><strong>8</strong><span>vistas</span></div>
+            <div><strong>13</strong><span>triggers</span></div>
+        </div>
+    </div>
+</section>
