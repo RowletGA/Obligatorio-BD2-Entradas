@@ -24,29 +24,6 @@ Los scripts originales son el contrato principal y no deben modificarse:
 2. `database/02_CreacionVistas (v2).sql`
 3. `database/03_CreacionTriggers (v2).sql`
 
-Esta iteracion agrega un unico script manual:
-
-4. `database/04_AgregarHashContrasena.sql`
-
-Debe ejecutarse manualmente despues de los anteriores:
-
-```sql
-ALTER TABLE Usuario
-ADD COLUMN HashContrasena VARCHAR(255) NULL
-AFTER CorreoElectronico;
-```
-
-La aplicacion no ejecuta scripts al iniciar.
-
-Antes de aplicar el script, verificar si la columna ya existe:
-
-```sql
-SELECT COUNT(*) AS Cantidad
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_SCHEMA = 'IC_Grupo4'
-  AND TABLE_NAME = 'Usuario'
-  AND COLUMN_NAME = 'HashContrasena';
-```
 
 ## Configuracion
 
