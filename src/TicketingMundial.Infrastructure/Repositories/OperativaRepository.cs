@@ -510,7 +510,7 @@ public sealed class OperativaRepository(
         var sql = $"""
             SELECT IDTransferencia, IDEntrada, FechaSolicitud, FechaRespuesta, EstadoTransferencia,
                    UsuarioOtorga, CorreoOtorga, UsuarioRecibe, CorreoRecibe,
-                   CONCAT('Evento ', IDEvento, ' · ', DATE_FORMAT(FechaEvento, '%Y-%m-%d %H:%i')) AS Evento,
+                   CONCAT('Evento ', IDEvento) AS Evento, FechaEvento,
                    Estadio, NombreSector
             FROM V_Transferencias
             WHERE Documento{prefix} = CONCAT(@TipoDocumento, ' ', @Numero)
@@ -644,13 +644,14 @@ public sealed class OperativaRepository(
         IdTransferencia = r.GetUInt64Value("IDTransferencia"),
         IdEntrada = r.GetUInt64Value("IDEntrada"),
         FechaSolicitud = r.GetDateTimeValue("FechaSolicitud"),
-        FechaRespuesta = r.GetNullableString("FechaRespuesta") is null ? null : r.GetDateTimeValue("FechaRespuesta"),
+        FechaRespuesta = r.GetNullableDateTime("FechaRespuesta"),
         Estado = r.GetRequiredString("EstadoTransferencia"),
         UsuarioOtorga = r.GetRequiredString("UsuarioOtorga"),
         CorreoOtorga = r.GetRequiredString("CorreoOtorga"),
         UsuarioRecibe = r.GetRequiredString("UsuarioRecibe"),
         CorreoRecibe = r.GetRequiredString("CorreoRecibe"),
         Evento = r.GetRequiredString("Evento"),
+        FechaEvento = r.GetDateTimeValue("FechaEvento"),
         Estadio = r.GetRequiredString("Estadio"),
         Sector = r.GetRequiredString("NombreSector")
     };

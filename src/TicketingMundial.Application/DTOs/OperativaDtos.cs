@@ -75,6 +75,7 @@ public sealed class TransferenciaDto
     public string UsuarioRecibe { get; init; } = string.Empty;
     public string CorreoRecibe { get; init; } = string.Empty;
     public string Evento { get; init; } = string.Empty;
+    public DateTime FechaEvento { get; init; }
     public string Estadio { get; init; } = string.Empty;
     public string Sector { get; init; } = string.Empty;
 }

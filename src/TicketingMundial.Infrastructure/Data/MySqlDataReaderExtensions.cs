@@ -40,6 +40,12 @@ internal static class MySqlDataReaderExtensions
         return reader.GetDateTime(reader.GetOrdinal(name));
     }
 
+    public static DateTime? GetNullableDateTime(this MySqlDataReader reader, string name)
+    {
+        var ordinal = reader.GetOrdinal(name);
+        return reader.IsDBNull(ordinal) ? null : reader.GetDateTime(ordinal);
+    }
+
     public static bool GetBooleanValue(this MySqlDataReader reader, string name)
     {
         return Convert.ToBoolean(reader.GetValue(reader.GetOrdinal(name)));
