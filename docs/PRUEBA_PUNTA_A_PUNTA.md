@@ -23,10 +23,35 @@ Usar datos demo identificables. No incluir contraseñas ni documentos reales.
 19. Registrar funcionario demo.
 20. Convertirlo en funcionario con `docs/CONFIGURACION_DEMO.md`.
 21. Como administrador, asignarlo en `/Admin/Funcionarios`.
-22. Como funcionario, abrir `/Funcionario/Validar`.
-23. Validar la entrada por ID usando token manual `DEMO`.
-24. Intentar validarla por segunda vez y confirmar rechazo funcional.
-25. Como administrador, abrir `/Admin/Reportes`.
+22. Como comprador, abrir detalle de una entrada activa y confirmar QR dinámico.
+23. Como funcionario, abrir `/Funcionario/Escanear`.
+24. Escanear el QR o pegar el token como fallback manual.
+25. Confirmar validación correcta y que `Validacion.TokenValidado` guarda el token exacto.
+26. Intentar validar otra vez y confirmar rechazo funcional.
+27. Como administrador, abrir `/Admin/Reportes`.
+
+## QR y transferencia
+
+1. Generar QR como propietario original.
+2. Transferir y aceptar como receptor.
+3. Intentar validar el QR anterior.
+4. Confirmar rechazo por propietario anterior.
+5. Abrir la entrada como receptor y generar un QR nuevo.
+
+## Demo QR en una sola computadora
+
+1. Navegador normal: iniciar sesión como Usuario General.
+2. Abrir `/Entradas/MisEntradas`.
+3. Abrir una entrada `ACTIVA`.
+4. Confirmar contador y esperar una renovación.
+5. Usar `Descargar QR actual`.
+6. Ventana privada u otro navegador: iniciar sesión como Funcionario.
+7. Abrir `/Funcionario/Escanear`.
+8. En `Cargar imagen`, seleccionar el PNG descargado.
+9. Confirmar detección y validación.
+10. Cargar nuevamente el mismo PNG y confirmar rechazo por doble validación.
+11. Descargar otro QR, esperar más de 30 segundos y confirmar rechazo por vencimiento.
+12. Confirmar en dashboard de funcionario la cobertura por sector y cantidad de validaciones.
 
 ## Casos de perfiles
 

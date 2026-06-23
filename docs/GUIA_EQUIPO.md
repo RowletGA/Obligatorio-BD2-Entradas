@@ -21,6 +21,11 @@ dotnet run --project src/TicketingMundial.Web --urls "http://localhost:5000"
 ```
 
 Configurar `src/TicketingMundial.Web/appsettings.Development.json` desde `appsettings.example.json`. No compartir credenciales reales.
+Para QR dinámico, configurar también `QrSecurity__SigningKey` con una clave local:
+
+```bash
+openssl rand -base64 32
+```
 
 ## Cómo probar cada rol
 
@@ -48,7 +53,7 @@ Comprar: iniciar sesión como usuario general, abrir un evento programado y sele
 
 Transferir: abrir `/Entradas/MisEntradas`, ver detalle y usar el correo del receptor.
 
-Validar: iniciar sesión como funcionario asignado y abrir `/Funcionario/Validar`.
+Validar: iniciar sesión como funcionario asignado y abrir `/Funcionario/Escanear`. La cámara usa `BarcodeDetector`; si el navegador no lo soporta, usar el token manual del QR como fallback.
 
 Asignar funcionario: en `/Admin/Funcionarios`, elegir primero el evento. El selector de sector se carga con los sectores habilitados específicamente para ese evento. No se deben crear asignaciones sobre eventos finalizados o cancelados.
 

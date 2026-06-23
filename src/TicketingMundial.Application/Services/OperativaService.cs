@@ -1,4 +1,5 @@
 using TicketingMundial.Application.Abstractions.Repositories;
+using TicketingMundial.Application.Abstractions.Security;
 using TicketingMundial.Application.Abstractions.Services;
 using TicketingMundial.Application.DTOs;
 using TicketingMundial.Domain.Common;
@@ -7,7 +8,7 @@ using TicketingMundial.Domain.Identity;
 
 namespace TicketingMundial.Application.Services;
 
-public sealed class OperativaService(IOperativaRepository repository) : IOperativaService
+public sealed class OperativaService(IOperativaRepository repository, IQrTokenService qrTokenService) : IOperativaService
 {
     public async Task<OperationResult<CompraPreviewDto>> PreviewCompraAsync(ulong idEvento, IReadOnlyList<CompraSectorCantidad> cantidades, CancellationToken cancellationToken)
     {
@@ -43,6 +44,64 @@ public sealed class OperativaService(IOperativaRepository repository) : IOperati
 
     public Task<EntradaResumenDto?> ObtenerEntradaPropiaAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) =>
         repository.ObtenerEntradaPropiaAsync(NormalizeDocumento(propietario), idEntrada, cancellationToken);
+
+    public async Task<OperationResult<QrEntradaGeneradoDto>> GenerarQrEntradaAsync(DocumentoUsuario propietario, ulong idEntrada, string? generationGrant, CancellationToken cancellationToken)
+    {
+        if (idEntrada == 0)
+        {
+            return OperationResult<QrEntradaGeneradoDto>.Failure("Entrada no disponible.");
+        }
+
+        var documento = NormalizeDocumento(propietario);
+        if (!string.IsNullOrWhiteSpace(generationGrant))
+        {
+            var grantValidation = qrTokenService.ValidarPermisoGeneracion(generationGrant.Trim(), documento);
+            if (grantValidation.EsValido && grantValidation.Payload is not null && grantValidation.Payload.IdEntrada == idEntrada)
+            {
+                var generatedFromGrant = qrTokenService.Generar(new QrTokenContext(
+                    grantValidation.Payload.IdEntrada,
+                    grantValidation.Payload.IdEvento,
+                    documento));
+                return OperationResult<QrEntradaGeneradoDto>.Ok(new QrEntradaGeneradoDto
+                {
+                    Token = generatedFromGrant.Token,
+                    VenceUtc = generatedFromGrant.VenceUtc,
+                    SegundosRestantes = generatedFromGrant.SegundosRestantes,
+                    GenerationGrant = generationGrant.Trim(),
+                    GenerationGrantVenceUtc = grantValidation.Payload.VenceUtc,
+                    ConsultoBase = false
+                });
+            }
+        }
+
+        var entrada = await repository.ObtenerEntradaQrAsync(documento, idEntrada, cancellationToken);
+        if (entrada is null)
+        {
+            return OperationResult<QrEntradaGeneradoDto>.Failure("Entrada no disponible.");
+        }
+
+        if (entrada.EstadoEntrada != "ACTIVA")
+        {
+            return OperationResult<QrEntradaGeneradoDto>.Failure("La entrada ya no está activa.");
+        }
+
+        if (entrada.EstadoEvento is not ("PROGRAMADO" or "EN_CURSO"))
+        {
+            return OperationResult<QrEntradaGeneradoDto>.Failure("El evento no admite validación en este momento.");
+        }
+
+        var generated = qrTokenService.Generar(new QrTokenContext(entrada.IdEntrada, entrada.IdEvento, entrada.PropietarioActual));
+        var grant = qrTokenService.GenerarPermisoGeneracion(new QrTokenContext(entrada.IdEntrada, entrada.IdEvento, entrada.PropietarioActual), TimeSpan.FromMinutes(5));
+        return OperationResult<QrEntradaGeneradoDto>.Ok(new QrEntradaGeneradoDto
+        {
+            Token = generated.Token,
+            VenceUtc = generated.VenceUtc,
+            SegundosRestantes = generated.SegundosRestantes,
+            GenerationGrant = grant.Grant,
+            GenerationGrantVenceUtc = grant.VenceUtc,
+            ConsultoBase = true
+        });
+    }
 
     public Task<UsuarioDestinoDto?> BuscarUsuarioGeneralPorCorreoAsync(string correo, CancellationToken cancellationToken) =>
         repository.BuscarUsuarioGeneralPorCorreoAsync(correo.Trim(), cancellationToken);
@@ -123,15 +182,27 @@ public sealed class OperativaService(IOperativaRepository repository) : IOperati
     public Task<IReadOnlyList<AsignacionFuncionarioDto>> ListarAsignacionesFuncionarioAsync(DocumentoUsuario funcionario, CancellationToken cancellationToken) =>
         repository.ListarAsignacionesFuncionarioAsync(NormalizeDocumento(funcionario), cancellationToken);
 
-    public async Task<OperationResult<ValidacionEntradaDto>> ValidarEntradaAsync(DocumentoUsuario funcionario, ulong idEntrada, string token, CancellationToken cancellationToken)
+    public async Task<OperationResult<ValidacionEntradaDto>> ValidarQrAsync(DocumentoUsuario funcionario, string token, CancellationToken cancellationToken)
     {
-        if (idEntrada == 0)
+        var normalizedToken = token?.Trim() ?? string.Empty;
+        if (normalizedToken.Length == 0)
         {
-            return OperationResult<ValidacionEntradaDto>.Failure("Debe indicar una entrada.");
+            return OperationResult<ValidacionEntradaDto>.Failure("Debe indicar el token QR.");
         }
 
-        var result = await repository.ValidarEntradaAsync(NormalizeDocumento(funcionario), idEntrada, string.IsNullOrWhiteSpace(token) ? $"DEMO-{idEntrada}" : token.Trim(), cancellationToken);
-        return OperationResult<ValidacionEntradaDto>.Ok(result, "Entrada validada correctamente.");
+        if (normalizedToken.Length > qrTokenService.MaxTokenLength)
+        {
+            return OperationResult<ValidacionEntradaDto>.Failure("Formato de QR inválido.");
+        }
+
+        var parsed = qrTokenService.LeerPayload(normalizedToken);
+        if (!parsed.EsValido)
+        {
+            return OperationResult<ValidacionEntradaDto>.Failure(parsed.Motivo ?? "Formato de QR inválido.");
+        }
+
+        var result = await repository.ValidarEntradaQrAsync(NormalizeDocumento(funcionario), normalizedToken, cancellationToken);
+        return OperationResult<ValidacionEntradaDto>.Ok(result, "Entrada válida.");
     }
 
     public Task<IReadOnlyList<ReporteEventoVendidoDto>> ReporteEventosVendidosAsync(DateTime? desde, DateTime? hasta, int limite, CancellationToken cancellationToken) =>

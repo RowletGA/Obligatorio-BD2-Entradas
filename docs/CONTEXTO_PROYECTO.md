@@ -7,7 +7,7 @@ TicketingMundial es una aplicación ASP.NET Core MVC para el obligatorio de Base
 Tecnologías y restricciones: .NET 8, Razor Views, autenticación por cookies, MySqlConnector, SQL manual parametrizado, sin Entity Framework, sin Dapper, sin ORM, sin migraciones automáticas y sin frameworks SPA.
 
 Estado actual: compila, ejecuta pruebas, registra usuarios generales reales, inicia/cierra sesión, emite roles por claims, maneja perfil activo para usuarios con múltiples roles, muestra catálogo de eventos desde vistas, usa hash de contraseña y tiene registro parametrizable por catálogos de configuración.
-También cuenta con módulo administrativo, compra, compras, entradas, transferencias, asignación de funcionarios, validación y reportes básicos.
+También cuenta con módulo administrativo, compra, compras, entradas, transferencias, QR dinámico, asignación de funcionarios, validación por funcionario y reportes básicos.
 
 ## 2. Arquitectura
 
@@ -109,6 +109,8 @@ Perfiles y navegación:
 
 La aplicación usa consultas parametrizadas y no usa ORM. Hay antiforgery en POST sensibles, autorización por roles, claims para identidad activa, rate limiting en login, archivo local de secretos ignorado y mensajes funcionales MySQL traducidos.
 
+El QR dinámico firma tokens con HMAC-SHA256 usando `QrSecurity:SigningKey`, no expone datos personales y se invalida al vencer o cambiar `V_PropietarioActual`. Las renovaciones usan un permiso temporal firmado para evitar consultas completas cada 30 segundos; la única escritura del flujo QR aceptado es el `INSERT` en `Validacion`.
+
 No versionar `appsettings.Development.json`, contraseñas, hashes, documentos reales ni datos personales reales.
 
 ## 8. Cómo ejecutar
@@ -137,13 +139,13 @@ Usar correos y documentos claramente artificiales. No borrar datos ajenos ni lim
 | Compra | Sí | Falta E2E real documentado | Medios de pago reales | `OperativaRepository` | No confía en precios del cliente |
 | Compras/entradas | Sí | - | - | `OperativaRepository` | Usa claims y `V_PropietarioActual` |
 | Transferencias | Sí | Falta E2E real documentado | Notificaciones | `OperativaRepository` | Triggers son autoridad final |
-| Validación | Sí | Manual por ID/token demo | QR/cámara/dispositivos | `OperativaRepository` | Dispositivos autorizados no están modelados |
+| Validación | Sí | Dispositivos autorizados | Inventario persistente de dispositivos | `OperativaRepository`, `QrTokenService` | QR dinámico, carga de imagen, cámara y validación transaccional implementados |
 | Reportes | Sí | Básicos | Gráficos/exportación | `OperativaRepository` | No crea vistas nuevas |
 
 ## 11. Próximos pasos
 
 1. Mantener datos demo controlados para defensa.
-2. Agregar QR/cámara solo si se decide abordar opcionales.
+2. Ejecutar prueba manual QR con dos sesiones antes de presentar.
 3. Revisar UX fina si aparecen nuevos hallazgos manuales.
 4. Actualizar este documento después de cada iteración.
 

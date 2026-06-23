@@ -1,7 +1,129 @@
 @model EntradaResumenDto
-@{ ViewData["Title"] = "Detalle de entrada"; }
+@{
+    ViewData["Title"] = "Detalle de entrada";
+    var puedeMostrarQr = Model.EstadoEntrada == "ACTIVA";
+}
 <section class="page-heading"><p class="section-kicker">Entrada</p><h1>Detalle de entrada</h1><p>@Model.Evento · @Model.Estadio</p></section>
 <section class="content-panel">
 <div class="detail-grid"><div><span>Fecha</span><strong>@Model.FechaEvento.ToString("dd/MM/yyyy HH:mm")</strong></div><div><span>Sector</span><strong>@Model.Sector</strong></div><div><span>Estado</span><strong>@Model.EstadoEntrada</strong></div><div><span>Costo</span><strong>@MoneyFormatter.Format(Model.Costo)</strong></div><div><span>Transferencias aceptadas</span><strong>@Model.TransferenciasAceptadas</strong></div></div>
 @if (Model.EstadoEntrada == "ACTIVA") { <a class="btn btn-primary mt-3" asp-action="Transferir" asp-route-id="@Model.IdEntrada">Transferir</a> }
 </section>
+
+<section class="content-panel mt-3" data-dynamic-qr data-qr-url="@Url.Action("QrDinamico", "Entradas", new { idEntrada = Model.IdEntrada })">
+    <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+        <div>
+            <h2 class="h5 mb-1">QR de ingreso</h2>
+            <p class="text-secondary mb-0">Este código cambia cada 30 segundos. Mantené esta pantalla abierta al ingresar.</p>
+        </div>
+        <div class="text-md-end">
+            <span class="small text-secondary">Vence en</span>
+            <strong data-qr-countdown>@(puedeMostrarQr ? "--" : "No disponible")</strong>
+        </div>
+    </div>
+    <div class="mt-3 d-flex flex-column flex-md-row align-items-start gap-3">
+        <div class="border rounded p-2 bg-white" style="width: 224px; min-height: 224px">
+            <img data-qr-image alt="QR de entrada" class="img-fluid" />
+        </div>
+        <div class="text-secondary" data-qr-status>
+            @(puedeMostrarQr ? "Generando QR..." : "El QR no está disponible para esta entrada.")
+        </div>
+    </div>
+    @if (puedeMostrarQr)
+    {
+        <div class="mt-3 d-flex flex-column flex-md-row gap-2 align-items-md-center">
+            <button type="button" class="btn btn-outline-primary" data-qr-download disabled>Descargar QR actual</button>
+            <span class="small text-secondary">Este QR vence en pocos segundos. Para una demostración, cargalo inmediatamente desde la pantalla del funcionario.</span>
+        </div>
+    }
+</section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const root = document.querySelector("[data-dynamic-qr]");
+            if (!root) return;
+
+            const image = root.querySelector("[data-qr-image]");
+            const status = root.querySelector("[data-qr-status]");
+            const countdown = root.querySelector("[data-qr-countdown]");
+            const downloadButton = root.querySelector("[data-qr-download]");
+            const url = root.dataset.qrUrl;
+            const downloadName = "entrada_@(Model.IdEntrada)_qr_actual.png";
+            let expiresAt = null;
+            let generationGrant = "";
+            let refreshTimer = null;
+            let countdownTimer = null;
+            let stopped = false;
+
+            const setStatus = (text) => { status.textContent = text; };
+            const clearTimers = () => {
+                window.clearTimeout(refreshTimer);
+                window.clearInterval(countdownTimer);
+            };
+
+            const updateCountdown = () => {
+                if (!expiresAt) return;
+                const remaining = Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000));
+                countdown.textContent = `${remaining}s`;
+                if (remaining <= 0 && !document.hidden && !stopped) {
+                    loadQr();
+                }
+            };
+
+            async function loadQr() {
+                if (document.hidden || stopped) return;
+                clearTimers();
+                setStatus("Actualizando QR...");
+                try {
+                    const requestUrl = generationGrant ? `${url}?grant=${encodeURIComponent(generationGrant)}` : url;
+                    const response = await fetch(requestUrl, { headers: { "Accept": "application/json" }, cache: "no-store" });
+                    if (!response.ok) {
+                        stopped = true;
+                        image.removeAttribute("src");
+                        if (downloadButton) downloadButton.disabled = true;
+                        countdown.textContent = "No disponible";
+                        setStatus("La entrada ya no tiene QR disponible.");
+                        return;
+                    }
+
+                    const data = await response.json();
+                    image.src = `data:image/png;base64,${data.imagenBase64}`;
+                    expiresAt = new Date(data.venceUtc);
+                    generationGrant = data.generationGrant || generationGrant;
+                    if (downloadButton) downloadButton.disabled = false;
+                    setStatus("QR vigente.");
+                    updateCountdown();
+                    countdownTimer = window.setInterval(updateCountdown, 1000);
+                    refreshTimer = window.setTimeout(loadQr, Math.max(1000, (expiresAt.getTime() - Date.now()) + 250));
+                } catch {
+                    setStatus("No se pudo actualizar el QR. Reintentando...");
+                    refreshTimer = window.setTimeout(loadQr, 5000);
+                }
+            }
+
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) {
+                    clearTimers();
+                    setStatus("Renovación pausada mientras la pestaña está oculta.");
+                    return;
+                }
+                loadQr();
+            });
+
+            if (downloadButton) {
+                downloadButton.addEventListener("click", () => {
+                    if (!image.src) return;
+                    const link = document.createElement("a");
+                    link.href = image.src;
+                    link.download = downloadName;
+                    link.rel = "noopener";
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                });
+            }
+
+            loadQr();
+        })();
+    </script>
+}

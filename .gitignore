@@ -3,14 +3,24 @@ obj/
 .DS_Store
 .vs/
 .vscode/
+.idea/
 *.user
 *.suo
 *.rsuser
 TestResults/
 coverage/
-src/TicketingMundial.Web/appsettings.Development.json
+*.trx
 
 appsettings.Development.json
+**/appsettings.Development.json
+appsettings.Local.json
+**/appsettings.Local.json
 .env
 .env.*
 !.env.example
+*.log
+logs/
+*.bak
+*.tmp
+*.dump
+*.sql.bak

@@ -39,17 +39,7 @@ Decisiones:
 - No se envían expresiones regulares al navegador como fuente de verdad.
 - No se modifican scripts originales ni se crean tablas nuevas.
 
-Limitaciones:
-
-- Administración real, compra, transferencias, validación y reportes siguen pendientes.
-- La carga de datos demostrables de eventos depende de implementar administración o de datos autorizados.
-
-Próximos pasos:
-
-1. Implementar CRUD administrativo de estadios, sectores y equipos.
-2. Implementar creación transaccional de eventos.
-3. Implementar compra real de entradas con bloqueo y triggers.
-4. Implementar área de usuario, transferencias, validación y reportes.
+Nota histórica: en esta primera iteración quedaban pendientes administración, compra, transferencias, validación y reportes. Esos puntos fueron cerrados en iteraciones posteriores.
 
 ## 2026-06-22 - Catálogo completo y módulo administrativo
 
@@ -70,11 +60,11 @@ Pruebas:
 - Reglas admin: jurisdicción, capacidad, estadio fuera de país, equipos iguales y sector de otro estadio.
 - `dotnet test TicketingMundial.sln`: 73 exitosas.
 
-Limitaciones:
+Limitaciones de esa iteración:
 
 - No se implementó eliminación física.
-- Funcionarios y reportes siguen pendientes.
-- La prueba manual de creación real requiere un usuario administrador existente en la base remota.
+- Funcionarios y reportes se completaron en iteraciones posteriores.
+- La prueba manual de creación real requiere un usuario administrador existente.
 
 ## 2026-06-22 - Recorrido operativo mínimo
 
@@ -87,7 +77,7 @@ Funcionalidades:
 - `/Entradas/MisEntradas` basado en `V_PropietarioActual`.
 - Transferencias enviadas/recibidas, creación, aceptación, rechazo y cancelación.
 - Administración mínima de asignaciones de funcionarios.
-- Validación manual de entrada para funcionario.
+- Validación inicial de entrada para funcionario.
 - Reportes básicos de eventos vendidos y compradores.
 
 Pruebas:
@@ -95,10 +85,10 @@ Pruebas:
 - `dotnet build TicketingMundial.sln`: correcto, 0 warnings.
 - `dotnet test TicketingMundial.sln`: 78 exitosas.
 
-Limitaciones:
+Limitaciones de esa iteración:
 
-- No se ejecutó recorrido E2E completo con datos reales por falta de credenciales demo confirmadas en esta sesión.
-- QR gráfico, cámara y dispositivos autorizados quedan fuera de alcance.
+- No se ejecutó recorrido E2E completo con datos reales por falta de credenciales demo confirmadas en esa sesión.
+- QR gráfico y cámara se implementaron después; dispositivos autorizados sigue parcial porque no existe entidad de base.
 
 ## 2026-06-22 - Pulido final de perfiles, navegación y eventos
 
@@ -118,6 +108,29 @@ Pruebas:
 
 - `dotnet build TicketingMundial.sln`: correcto, 0 warnings.
 - `DOTNET_ROLL_FORWARD=Major dotnet test TicketingMundial.sln`: 84 exitosas.
+
+## 2026-06-23 - QR dinámico y validación por funcionario
+
+Funcionalidades:
+
+- Token QR versionado `v1` con HMAC-SHA256, Base64Url, ventana temporal de 30 segundos y marca de propietario.
+- Endpoint `/Entradas/QrDinamico/{idEntrada}` con respuesta JSON no cacheable.
+- Detalle de entrada con QR, contador, renovación automática y pausa por pestaña oculta.
+- Permiso temporal firmado para renovar QR durante 5 minutos sin consultar ni escribir en la base.
+- Descarga del QR actual como PNG ya renderizado.
+- Pantalla `/Funcionario/Escanear` con carga de imagen, cámara mediante `BarcodeDetector` y fallback manual.
+- `POST /Funcionario/ValidarQr` con antiforgery, rate limiting y token como único dato confiable.
+- Validación transaccional con `SELECT ... FOR UPDATE`, verificación de propietario actual y asignación en `FuncionarioEventoSector`.
+- Inserción en `Validacion` guardando el token exacto y uso de triggers existentes para marcar `Entrada` como `VALIDADA`.
+
+Pruebas:
+
+- `dotnet build TicketingMundial.sln`: correcto, 0 warnings.
+- `dotnet test TicketingMundial.sln`: 110 exitosas.
+
+Limitación:
+
+- Dispositivos autorizados queda parcial porque la base actual no contiene tabla o entidad para persistirlos.
 
 Limitaciones:
 

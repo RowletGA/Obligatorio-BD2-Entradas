@@ -78,7 +78,7 @@ Funcionario:
 - Dashboard
 - Eventos asignados
 - Sectores asignados
-- Validar entrada
+- Escanear entradas
 - Historial de validaciones
 - Cambiar perfil, solo si posee más de uno
 - Cerrar sesión

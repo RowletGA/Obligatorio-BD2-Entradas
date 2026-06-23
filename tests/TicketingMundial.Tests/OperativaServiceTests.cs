@@ -1,4 +1,5 @@
 using TicketingMundial.Application.Abstractions.Repositories;
+using TicketingMundial.Application.Abstractions.Security;
 using TicketingMundial.Application.DTOs;
 using TicketingMundial.Application.Services;
 using TicketingMundial.Domain.Identity;
@@ -12,7 +13,7 @@ public sealed class OperativaServiceTests
     [Fact]
     public async Task ComprarAsync_RechazaSeisEntradas()
     {
-        var service = new OperativaService(new FakeOperativaRepository());
+        var service = new OperativaService(new FakeOperativaRepository(), new FakeQrTokenService());
 
         var result = await service.ComprarAsync(Usuario, 1, [new CompraSectorCantidad(10, 6)], CancellationToken.None);
 
@@ -23,7 +24,7 @@ public sealed class OperativaServiceTests
     [Fact]
     public async Task ComprarAsync_RechazaCantidadCero()
     {
-        var service = new OperativaService(new FakeOperativaRepository());
+        var service = new OperativaService(new FakeOperativaRepository(), new FakeQrTokenService());
 
         var result = await service.ComprarAsync(Usuario, 1, [new CompraSectorCantidad(10, 0)], CancellationToken.None);
 
@@ -35,7 +36,7 @@ public sealed class OperativaServiceTests
     public async Task ComprarAsync_NormalizaCantidadesYUsaRepositorio()
     {
         var repository = new FakeOperativaRepository();
-        var service = new OperativaService(repository);
+        var service = new OperativaService(repository, new FakeQrTokenService());
 
         var result = await service.ComprarAsync(Usuario, 1, [new CompraSectorCantidad(10, 2), new CompraSectorCantidad(10, 1)], CancellationToken.None);
 
@@ -46,7 +47,7 @@ public sealed class OperativaServiceTests
     [Fact]
     public async Task ResponderTransferenciaAsync_RechazaEstadoInvalido()
     {
-        var service = new OperativaService(new FakeOperativaRepository());
+        var service = new OperativaService(new FakeOperativaRepository(), new FakeQrTokenService());
 
         var result = await service.ResponderTransferenciaAsync(Usuario, 1, "DROP", true, CancellationToken.None);
 
@@ -57,7 +58,7 @@ public sealed class OperativaServiceTests
     public async Task Reportes_ClampLimite()
     {
         var repository = new FakeOperativaRepository();
-        var service = new OperativaService(repository);
+        var service = new OperativaService(repository, new FakeQrTokenService());
 
         await service.ReporteCompradoresAsync(null, null, 500, CancellationToken.None);
 
@@ -68,7 +69,7 @@ public sealed class OperativaServiceTests
     public async Task AsignarFuncionarioAsync_RechazaEventoFinalizadoManipulado()
     {
         var repository = new FakeOperativaRepository { EventoAsignable = null };
-        var service = new OperativaService(repository);
+        var service = new OperativaService(repository, new FakeQrTokenService());
 
         var result = await service.AsignarFuncionarioAsync(Usuario, 7, 2, "UY", CancellationToken.None);
 
@@ -80,7 +81,7 @@ public sealed class OperativaServiceTests
     public async Task AsignarFuncionarioAsync_RechazaSectorNoHabilitado()
     {
         var repository = new FakeOperativaRepository { SectorHabilitado = false };
-        var service = new OperativaService(repository);
+        var service = new OperativaService(repository, new FakeQrTokenService());
 
         var result = await service.AsignarFuncionarioAsync(Usuario, 7, 99, "UY", CancellationToken.None);
 
@@ -92,7 +93,7 @@ public sealed class OperativaServiceTests
     public async Task AsignarFuncionarioAsync_RechazaAsignacionDuplicada()
     {
         var repository = new FakeOperativaRepository { AsignacionDuplicada = true };
-        var service = new OperativaService(repository);
+        var service = new OperativaService(repository, new FakeQrTokenService());
 
         var result = await service.AsignarFuncionarioAsync(Usuario, 7, 2, "UY", CancellationToken.None);
 
@@ -104,7 +105,7 @@ public sealed class OperativaServiceTests
     public async Task AsignarFuncionarioAsync_InsertaAsignacionValida()
     {
         var repository = new FakeOperativaRepository();
-        var service = new OperativaService(repository);
+        var service = new OperativaService(repository, new FakeQrTokenService());
 
         var result = await service.AsignarFuncionarioAsync(Usuario, 7, 2, "UY", CancellationToken.None);
 
@@ -145,6 +146,7 @@ public sealed class OperativaServiceTests
         public Task<CompraDetalleDto?> ObtenerCompraAsync(DocumentoUsuario comprador, ulong idVenta, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<EntradaResumenDto>> ListarEntradasPropiasAsync(DocumentoUsuario propietario, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<EntradaResumenDto?> ObtenerEntradaPropiaAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<EntradaQrDto?> ObtenerEntradaQrAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<UsuarioDestinoDto?> BuscarUsuarioGeneralPorCorreoAsync(string correo, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ulong> CrearTransferenciaAsync(DocumentoUsuario otorga, ulong idEntrada, string correoDestino, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<TransferenciaDto>> ListarTransferenciasEnviadasAsync(DocumentoUsuario usuario, CancellationToken cancellationToken) => throw new NotImplementedException();
@@ -162,7 +164,17 @@ public sealed class OperativaServiceTests
             return Task.CompletedTask;
         }
         public Task<IReadOnlyList<AsignacionFuncionarioDto>> ListarAsignacionesFuncionarioAsync(DocumentoUsuario funcionario, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<ValidacionEntradaDto> ValidarEntradaAsync(DocumentoUsuario funcionario, ulong idEntrada, string token, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<ValidacionEntradaDto> ValidarEntradaQrAsync(DocumentoUsuario funcionario, string token, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<ReporteEventoVendidoDto>> ReporteEventosVendidosAsync(DateTime? desde, DateTime? hasta, int limite, CancellationToken cancellationToken) => throw new NotImplementedException();
+    }
+
+    private sealed class FakeQrTokenService : IQrTokenService
+    {
+        public int MaxTokenLength => 255;
+        public QrTokenGenerado Generar(QrTokenContext contexto) => new();
+        public QrGenerationGrant GenerarPermisoGeneracion(QrTokenContext contexto, TimeSpan lifetime) => new();
+        public ResultadoValidacionQr LeerPayload(string token) => ResultadoValidacionQr.Valido(new QrTokenPayload { IdEntrada = 1, IdEvento = 1 });
+        public ResultadoValidacionQr Validar(string token, QrTokenValidationContext contexto) => ResultadoValidacionQr.Valido(new QrTokenPayload { IdEntrada = contexto.IdEntrada, IdEvento = contexto.IdEvento });
+        public ResultadoValidacionPermisoQr ValidarPermisoGeneracion(string grant, DocumentoUsuario propietario) => ResultadoValidacionPermisoQr.Rechazado("No usado.");
     }
 }

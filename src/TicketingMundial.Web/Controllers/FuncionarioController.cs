@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TicketingMundial.Application.Abstractions.Services;
 using TicketingMundial.Domain.Identity;
 using TicketingMundial.Infrastructure.Errors;
@@ -19,20 +20,25 @@ public sealed class FuncionarioController(IOperativaService operativaService) : 
     }
 
     [HttpGet("Validar")]
-    public IActionResult Validar() => View(new ValidarEntradaViewModel());
+    public IActionResult Validar() => RedirectToAction(nameof(Escanear));
 
-    [HttpPost("Validar")]
+    [HttpGet("Escanear")]
+    public IActionResult Escanear() => View(new ValidarQrViewModel());
+
+    [HttpPost("ValidarQr")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Validar(ValidarEntradaViewModel model, CancellationToken cancellationToken)
+    [EnableRateLimiting("qr-validation")]
+    public async Task<IActionResult> ValidarQr(ValidarQrViewModel model, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
-            return View(model);
+            ModelState.AddModelError(string.Empty, "Token QR inválido.");
+            return View("Escanear", model);
         }
 
         try
         {
-            var result = await operativaService.ValidarEntradaAsync(GetDocumento(), model.IdEntrada, model.Token ?? string.Empty, cancellationToken);
+            var result = await operativaService.ValidarQrAsync(GetDocumento(), model.Token, cancellationToken);
             if (result.Success)
             {
                 model.Resultado = result.Value;
@@ -40,7 +46,7 @@ public sealed class FuncionarioController(IOperativaService operativaService) : 
             }
             else
             {
-                ModelState.AddModelError(string.Empty, result.Message ?? "No fue posible validar la entrada.");
+                ModelState.AddModelError(string.Empty, result.Message ?? "QR rechazado.");
             }
         }
         catch (DatabaseException ex)
@@ -48,7 +54,8 @@ public sealed class FuncionarioController(IOperativaService operativaService) : 
             ModelState.AddModelError(string.Empty, ex.UserMessage);
         }
 
-        return View(model);
+        model.Token = string.Empty;
+        return View("Escanear", model);
     }
 
     private DocumentoUsuario GetDocumento() => new(User.GetTipoDocumento() ?? string.Empty, User.GetPaisDocumento() ?? string.Empty, User.GetNumeroDocumento() ?? string.Empty);

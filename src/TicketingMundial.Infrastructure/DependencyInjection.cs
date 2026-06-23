@@ -6,6 +6,8 @@ using TicketingMundial.Infrastructure.Errors;
 using TicketingMundial.Infrastructure.HealthChecks;
 using TicketingMundial.Infrastructure.Repositories;
 using TicketingMundial.Infrastructure.Authentication;
+using TicketingMundial.Application.Abstractions.Security;
+using TicketingMundial.Infrastructure.Security;
 
 namespace TicketingMundial.Infrastructure;
 
@@ -20,6 +22,8 @@ public static class DependencyInjection
         services.AddScoped<IEventoRepository, EventoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IPasswordService, PasswordService>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IQrTokenService, QrTokenService>();
         services.AddHealthChecks().AddCheck<MySqlHealthCheck>("mysql");
 
         return services;

@@ -11,6 +11,29 @@ builder.Configuration.AddJsonFile("catalogos-registro.json", optional: false, re
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<CatalogosRegistroOptions>(
     builder.Configuration.GetSection(CatalogosRegistroOptions.SectionName));
+builder.Services.AddOptions<QrSecurityOptions>()
+    .Bind(builder.Configuration.GetSection(QrSecurityOptions.SectionName))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.SigningKey), "QrSecurity:SigningKey es obligatoria.")
+    .Validate(options =>
+        !string.Equals(
+            options.SigningKey?.Trim(),
+            "CONFIGURAR_MEDIANTE_VARIABLE_DE_ENTORNO",
+            StringComparison.OrdinalIgnoreCase),
+        "QrSecurity:SigningKey debe reemplazarse por una clave local segura.")
+    .Validate(options =>
+    {
+        try
+        {
+            return Convert.FromBase64String(options.SigningKey).Length >= 32;
+        }
+        catch (FormatException)
+        {
+            return System.Text.Encoding.UTF8.GetByteCount(options.SigningKey) >= 32;
+        }
+    }, "QrSecurity:SigningKey debe tener al menos 32 bytes.")
+    .Validate(options => options.LifetimeSeconds > 0, "QrSecurity:LifetimeSeconds debe ser positivo.")
+    .Validate(options => options.ClockSkewSeconds >= 0 && options.ClockSkewSeconds <= 10, "QrSecurity:ClockSkewSeconds debe ser entre 0 y 10.")
+    .ValidateOnStart();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure();
 
@@ -50,6 +73,16 @@ builder.Services.AddRateLimiter(options =>
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+    options.AddPolicy("qr-validation", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.User.Identity?.Name ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 AutoReplenishment = true

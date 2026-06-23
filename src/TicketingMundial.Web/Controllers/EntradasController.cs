@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using QRCoder;
 using TicketingMundial.Application.Abstractions.Services;
 using TicketingMundial.Domain.Identity;
 using TicketingMundial.Web.Extensions;
@@ -21,6 +22,33 @@ public sealed class EntradasController(IOperativaService operativaService) : Con
     {
         var entrada = await operativaService.ObtenerEntradaPropiaAsync(GetDocumento(), id, cancellationToken);
         return entrada is null ? NotFound() : View(entrada);
+    }
+
+    [HttpGet("/Entradas/QrDinamico/{idEntrada:long}")]
+    public async Task<IActionResult> QrDinamico(ulong idEntrada, string? grant, CancellationToken cancellationToken)
+    {
+        var result = await operativaService.GenerarQrEntradaAsync(GetDocumento(), idEntrada, grant, cancellationToken);
+        Response.Headers.CacheControl = "no-store, no-cache";
+        Response.Headers.Pragma = "no-cache";
+        Response.Headers.Expires = "0";
+
+        if (!result.Success || result.Value is null)
+        {
+            return NotFound(new { mensaje = result.Message ?? "Entrada no disponible." });
+        }
+
+        using var generator = new QRCodeGenerator();
+        using var data = generator.CreateQrCode(result.Value.Token, QRCodeGenerator.ECCLevel.Q);
+        var png = new PngByteQRCode(data).GetGraphic(8);
+        return Json(new
+        {
+            imagenBase64 = Convert.ToBase64String(png),
+            venceUtc = result.Value.VenceUtc,
+            segundosRestantes = result.Value.SegundosRestantes,
+            generationGrant = result.Value.GenerationGrant,
+            generationGrantVenceUtc = result.Value.GenerationGrantVenceUtc,
+            consultoBase = result.Value.ConsultoBase
+        });
     }
 
     [HttpGet("/Entradas/Transferir/{id:long}")]

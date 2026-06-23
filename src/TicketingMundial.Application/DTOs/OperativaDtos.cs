@@ -106,6 +106,7 @@ public sealed class AsignacionFuncionarioDto
     public ulong IdSector { get; init; }
     public string Sector { get; init; } = string.Empty;
     public string Estadio { get; init; } = string.Empty;
+    public int EntradasValidadas { get; init; }
 }
 
 public sealed class ValidacionEntradaDto
@@ -118,6 +119,9 @@ public sealed class ValidacionEntradaDto
     public ulong IdSector { get; init; }
     public string Sector { get; init; } = string.Empty;
     public string Estadio { get; init; } = string.Empty;
+    public string Evento { get; init; } = string.Empty;
+    public DateTime? FechaHoraValidacion { get; init; }
+    public string FuncionarioValidador { get; init; } = string.Empty;
 }
 
 public sealed class ReporteEventoVendidoDto

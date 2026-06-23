@@ -1,5 +1,6 @@
 using System.Text;
 using MySqlConnector;
+using TicketingMundial.Application.Abstractions.Security;
 using TicketingMundial.Application.Abstractions.Repositories;
 using TicketingMundial.Application.DTOs;
 using TicketingMundial.Application.Security;
@@ -11,7 +12,8 @@ namespace TicketingMundial.Infrastructure.Repositories;
 
 public sealed class OperativaRepository(
     IDbConnectionFactory connectionFactory,
-    IMySqlExceptionTranslator exceptionTranslator) : IOperativaRepository
+    IMySqlExceptionTranslator exceptionTranslator,
+    IQrTokenService qrTokenService) : IOperativaRepository
 {
     public async Task<CompraPreviewDto> ObtenerPreviewCompraAsync(ulong idEvento, IReadOnlyList<CompraSectorCantidad> cantidades, CancellationToken cancellationToken)
     {
@@ -191,6 +193,35 @@ public sealed class OperativaRepository(
     public async Task<EntradaResumenDto?> ObtenerEntradaPropiaAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) =>
         (await ListarEntradasPropiasAsync(propietario, cancellationToken)).FirstOrDefault(e => e.IdEntrada == idEntrada);
 
+    public Task<EntradaQrDto?> ObtenerEntradaQrAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT en.IDEntrada, en.IDEvento, ev.FechaHora AS FechaEvento, ev.EstadoEvento,
+                   en.IDSector, s.NombreSector AS Sector, en.EstadoEntrada,
+                   CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) AS Evento,
+                   est.Nombre AS Estadio,
+                   p.TipoDocumento, p.PaisDocumento, p.Numero
+            FROM Entrada en
+            INNER JOIN V_PropietarioActual p ON p.IDEntrada = en.IDEntrada
+            INNER JOIN Evento ev ON ev.IDEvento = en.IDEvento
+            INNER JOIN Estadio est ON est.IDEstadio = ev.IDEstadio
+            INNER JOIN Sector s ON s.IDSector = en.IDSector
+            LEFT JOIN EventoLocal l ON l.IDEvento = ev.IDEvento
+            LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
+            LEFT JOIN EventoVisita vi ON vi.IDEvento = ev.IDEvento
+            LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
+            WHERE en.IDEntrada = @IdEntrada
+              AND p.TipoDocumento = @TipoDocumento
+              AND p.PaisDocumento = @PaisDocumento
+              AND p.Numero = @Numero;
+            """;
+        return QuerySingleAsync(sql, cmd =>
+        {
+            cmd.Parameters.Add("@IdEntrada", MySqlDbType.UInt64).Value = idEntrada;
+            AddDocumento(cmd, propietario);
+        }, MapEntradaQr, "obtener QR de entrada", cancellationToken);
+    }
+
     public Task<UsuarioDestinoDto?> BuscarUsuarioGeneralPorCorreoAsync(string correo, CancellationToken cancellationToken)
     {
         const string sql = """
@@ -270,7 +301,7 @@ public sealed class OperativaRepository(
     public Task<IReadOnlyList<AsignacionFuncionarioDto>> ListarAsignacionesAsync(string paisSede, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT v.TipoDocumento, v.PaisDocumento, v.Numero, v.Funcionario, v.NumLegajo,
+            SELECT v.TipoDocumento, v.PaisDocumento, v.Numero, v.Funcionario, v.NumLegajo, v.EntradasValidadas,
                    v.IDEvento, v.FechaEvento, ev.EstadoEvento, v.IDSector, v.NombreSector, ev.Estadio
             FROM V_ValidacionesPorFuncionario v
             INNER JOIN V_Eventos ev ON ev.IDEvento = v.IDEvento
@@ -395,7 +426,7 @@ public sealed class OperativaRepository(
     public Task<IReadOnlyList<AsignacionFuncionarioDto>> ListarAsignacionesFuncionarioAsync(DocumentoUsuario funcionario, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT v.TipoDocumento, v.PaisDocumento, v.Numero, v.Funcionario, v.NumLegajo,
+            SELECT v.TipoDocumento, v.PaisDocumento, v.Numero, v.Funcionario, v.NumLegajo, v.EntradasValidadas,
                    v.IDEvento, v.FechaEvento, ev.EstadoEvento, v.IDSector, v.NombreSector, ev.Estadio
             FROM V_ValidacionesPorFuncionario v
             INNER JOIN V_Eventos ev ON ev.IDEvento = v.IDEvento
@@ -405,31 +436,89 @@ public sealed class OperativaRepository(
         return QueryListAsync(sql, cmd => AddDocumento(cmd, funcionario), MapAsignacion, "listar asignaciones de funcionario", cancellationToken);
     }
 
-    public async Task<ValidacionEntradaDto> ValidarEntradaAsync(DocumentoUsuario funcionario, ulong idEntrada, string token, CancellationToken cancellationToken)
+    public async Task<ValidacionEntradaDto> ValidarEntradaQrAsync(DocumentoUsuario funcionario, string token, CancellationToken cancellationToken)
     {
+        var parsed = qrTokenService.LeerPayload(token);
+        if (!parsed.EsValido || parsed.Payload is null)
+        {
+            throw new DatabaseException(parsed.Motivo ?? "QR inválido.", new InvalidOperationException("Token QR inválido."));
+        }
+
         await using var connection = await connectionFactory.OpenAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         try
         {
-            await using (var cmd = new MySqlCommand("""
+            var entrada = await ObtenerEntradaQrTransaccionAsync(connection, transaction, parsed.Payload.IdEntrada, cancellationToken);
+            if (entrada is null)
+            {
+                throw new DatabaseException("Entrada inexistente o no disponible.", new InvalidOperationException("Entrada no encontrada."));
+            }
+
+            var tokenValidation = qrTokenService.Validar(token, new QrTokenValidationContext(entrada.IdEntrada, entrada.IdEvento, entrada.PropietarioActual));
+            if (!tokenValidation.EsValido)
+            {
+                throw new DatabaseException(tokenValidation.Motivo ?? "QR inválido.", new InvalidOperationException("Token QR rechazado."));
+            }
+
+            if (entrada.EstadoEntrada == "VALIDADA")
+            {
+                throw new DatabaseException("Entrada ya validada.", new InvalidOperationException("Entrada ya validada."));
+            }
+
+            if (entrada.EstadoEntrada == "ANULADA")
+            {
+                throw new DatabaseException("Entrada anulada.", new InvalidOperationException("Entrada anulada."));
+            }
+
+            if (entrada.EstadoEntrada != "ACTIVA")
+            {
+                throw new DatabaseException("Entrada no disponible para validación.", new InvalidOperationException("Estado inválido."));
+            }
+
+            if (entrada.EstadoEvento == "CANCELADO")
+            {
+                throw new DatabaseException("Evento cancelado.", new InvalidOperationException("Evento cancelado."));
+            }
+
+            if (entrada.EstadoEvento == "FINALIZADO")
+            {
+                throw new DatabaseException("Evento finalizado.", new InvalidOperationException("Evento finalizado."));
+            }
+
+            if (entrada.EstadoEvento is not ("PROGRAMADO" or "EN_CURSO"))
+            {
+                throw new DatabaseException("El evento no admite validación en este momento.", new InvalidOperationException("Evento no válido."));
+            }
+
+            if (!await ExisteAsignacionFuncionarioTransaccionAsync(connection, transaction, funcionario, entrada.IdEvento, entrada.IdSector, cancellationToken))
+            {
+                throw new DatabaseException("Funcionario no asignado a este sector.", new InvalidOperationException("Funcionario no asignado."));
+            }
+
+            await using (var insert = new MySqlCommand("""
                 INSERT INTO Validacion (IDEntrada, TipoDocFuncionario, PaisDocFuncionario, NumeroFuncionario, TokenValidado)
                 VALUES (@IdEntrada, @TipoDocumento, @PaisDocumento, @Numero, @Token);
                 """, connection, transaction))
             {
-                cmd.Parameters.Add("@IdEntrada", MySqlDbType.UInt64).Value = idEntrada;
-                AddDocumento(cmd, funcionario);
-                cmd.Parameters.Add("@Token", MySqlDbType.VarChar, 255).Value = token;
-                await cmd.ExecuteNonQueryAsync(cancellationToken);
+                insert.Parameters.Add("@IdEntrada", MySqlDbType.UInt64).Value = entrada.IdEntrada;
+                AddDocumento(insert, funcionario);
+                insert.Parameters.Add("@Token", MySqlDbType.VarChar, 255).Value = token;
+                await insert.ExecuteNonQueryAsync(cancellationToken);
             }
 
-            var result = await ObtenerValidacionEntradaAsync(connection, transaction, idEntrada, cancellationToken);
+            var result = await ObtenerValidacionEntradaAsync(connection, transaction, entrada.IdEntrada, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return result;
+        }
+        catch (DatabaseException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
         }
         catch (MySqlException ex)
         {
             await transaction.RollbackAsync(CancellationToken.None);
-            throw exceptionTranslator.Translate(ex, "validar entrada");
+            throw exceptionTranslator.Translate(ex, "validar QR");
         }
     }
 
@@ -614,7 +703,13 @@ public sealed class OperativaRepository(
 
     private async Task<ValidacionEntradaDto> ObtenerValidacionEntradaAsync(MySqlConnection c, MySqlTransaction tx, ulong idEntrada, CancellationToken ct)
     {
-        await using var cmd = new MySqlCommand("SELECT IDEntrada, EstadoEntrada, ResultadoValidacion, IDEvento, FechaEvento, IDSector, NombreSector, Estadio FROM V_ValidacionEntrada WHERE IDEntrada=@IdEntrada;", c, tx);
+        await using var cmd = new MySqlCommand("""
+            SELECT IDEntrada, EstadoEntrada, ResultadoValidacion, IDEvento, FechaEvento, IDSector, NombreSector, Estadio,
+                   CONCAT(COALESCE(EquipoLocal, 'Local'), ' vs ', COALESCE(EquipoVisitante, 'Visitante')) AS Evento,
+                   FechaHoraValidacion, FuncionarioValidador
+            FROM V_ValidacionEntrada
+            WHERE IDEntrada=@IdEntrada;
+            """, c, tx);
         cmd.Parameters.Add("@IdEntrada", MySqlDbType.UInt64).Value = idEntrada;
         await using var r = await cmd.ExecuteReaderAsync(ct);
         if (!await r.ReadAsync(ct))
@@ -630,8 +725,65 @@ public sealed class OperativaRepository(
             FechaEvento = r.GetDateTimeValue("FechaEvento"),
             IdSector = r.GetUInt64Value("IDSector"),
             Sector = r.GetRequiredString("NombreSector"),
-            Estadio = r.GetRequiredString("Estadio")
+            Estadio = r.GetRequiredString("Estadio"),
+            Evento = r.GetRequiredString("Evento"),
+            FechaHoraValidacion = r.GetNullableDateTime("FechaHoraValidacion"),
+            FuncionarioValidador = r.GetNullableString("FuncionarioValidador") ?? string.Empty
         };
+    }
+
+    private async Task<EntradaQrDto?> ObtenerEntradaQrTransaccionAsync(MySqlConnection connection, MySqlTransaction transaction, ulong idEntrada, CancellationToken cancellationToken)
+    {
+        await using (var lockCmd = new MySqlCommand("SELECT IDEntrada FROM Entrada WHERE IDEntrada = @IdEntrada FOR UPDATE;", connection, transaction))
+        {
+            lockCmd.Parameters.Add("@IdEntrada", MySqlDbType.UInt64).Value = idEntrada;
+            var locked = await lockCmd.ExecuteScalarAsync(cancellationToken);
+            if (locked is null)
+            {
+                return null;
+            }
+        }
+
+        await using var cmd = new MySqlCommand("""
+            SELECT en.IDEntrada, en.IDEvento, ev.FechaHora AS FechaEvento, ev.EstadoEvento,
+                   en.IDSector, s.NombreSector AS Sector, en.EstadoEntrada,
+                   CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) AS Evento,
+                   est.Nombre AS Estadio,
+                   p.TipoDocumento, p.PaisDocumento, p.Numero
+            FROM Entrada en
+            INNER JOIN V_PropietarioActual p ON p.IDEntrada = en.IDEntrada
+            INNER JOIN Evento ev ON ev.IDEvento = en.IDEvento
+            INNER JOIN Estadio est ON est.IDEstadio = ev.IDEstadio
+            INNER JOIN Sector s ON s.IDSector = en.IDSector
+            LEFT JOIN EventoLocal l ON l.IDEvento = ev.IDEvento
+            LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
+            LEFT JOIN EventoVisita vi ON vi.IDEvento = ev.IDEvento
+            LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
+            WHERE en.IDEntrada = @IdEntrada
+            ;
+            """, connection, transaction);
+        cmd.Parameters.Add("@IdEntrada", MySqlDbType.UInt64).Value = idEntrada;
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? MapEntradaQr(reader) : null;
+    }
+
+    private static async Task<bool> ExisteAsignacionFuncionarioTransaccionAsync(MySqlConnection connection, MySqlTransaction transaction, DocumentoUsuario funcionario, ulong idEvento, ulong idSector, CancellationToken cancellationToken)
+    {
+        await using var cmd = new MySqlCommand("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM FuncionarioEventoSector
+                WHERE TipoDocumento = @TipoDocumento
+                  AND PaisDocumento = @PaisDocumento
+                  AND Numero = @Numero
+                  AND IDEvento = @IdEvento
+                  AND IDSector = @IdSector
+            );
+            """, connection, transaction);
+        AddDocumento(cmd, funcionario);
+        cmd.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+        cmd.Parameters.Add("@IdSector", MySqlDbType.UInt64).Value = idSector;
+        return Convert.ToBoolean(await cmd.ExecuteScalarAsync(cancellationToken));
     }
 
     private async Task<IReadOnlyList<T>> QueryListAsync<T>(string sql, Action<MySqlCommand> addParameters, Func<MySqlDataReader, T> map, string op, CancellationToken ct)
@@ -768,6 +920,20 @@ public sealed class OperativaRepository(
         TransferenciasAceptadas = Convert.ToInt32(r.GetValue(r.GetOrdinal("TransferenciasAceptadas")))
     };
 
+    private static EntradaQrDto MapEntradaQr(MySqlDataReader r) => new()
+    {
+        IdEntrada = r.GetUInt64Value("IDEntrada"),
+        IdEvento = r.GetUInt64Value("IDEvento"),
+        FechaEvento = r.GetDateTimeValue("FechaEvento"),
+        EstadoEvento = r.GetRequiredString("EstadoEvento"),
+        IdSector = r.GetUInt64Value("IDSector"),
+        Sector = r.GetRequiredString("Sector"),
+        EstadoEntrada = r.GetRequiredString("EstadoEntrada"),
+        Evento = r.GetRequiredString("Evento"),
+        Estadio = r.GetRequiredString("Estadio"),
+        PropietarioActual = new DocumentoUsuario(r.GetRequiredString("TipoDocumento"), r.GetRequiredString("PaisDocumento"), r.GetRequiredString("Numero"))
+    };
+
     private static TransferenciaDto MapTransferencia(MySqlDataReader r) => new()
     {
         IdTransferencia = r.GetUInt64Value("IDTransferencia"),
@@ -803,7 +969,8 @@ public sealed class OperativaRepository(
         EstadoEvento = r.GetRequiredString("EstadoEvento"),
         IdSector = r.GetUInt64Value("IDSector"),
         Sector = r.GetRequiredString("NombreSector"),
-        Estadio = r.GetRequiredString("Estadio")
+        Estadio = r.GetRequiredString("Estadio"),
+        EntradasValidadas = Convert.ToInt32(r.GetValue(r.GetOrdinal("EntradasValidadas")))
     };
 
     private static ulong? GetNullableUInt64(MySqlDataReader reader, string name)

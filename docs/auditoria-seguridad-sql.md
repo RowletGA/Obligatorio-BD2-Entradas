@@ -21,7 +21,7 @@ Revision estatica de repositorios y acceso a base. No se detecto uso de ORM, Dap
 | RegistrarUsuarioGeneralAsync | INSERT transaccional | Usuario, UsuarioGeneral, TelefonoUsuario | Documento, datos personales, correo, hash, direccion, telefonos | VarChar segun columna | Registro validado en servidor | Transaccion unica; parametros tipados; rollback ante error; no loguea contrasena ni hash | Seguro |
 | ActualizarHashContrasenaAsync | UPDATE hash por documento | Usuario | Documento, `@HashContrasena` | VarChar(20), VarChar(50), VarChar(30), VarChar(255) | Rehash tras login exitoso | Parametros tipados; no loguea hash | Seguro |
 | AdminRepository | CRUD administrativo y alta de evento | Administrador, Estadio, Sector, Equipo, Evento, EventoLocal, EventoVisita, EventoSector | IDs, pais sede, filtros y datos de formularios | Tipados con MySqlParameter | Administracion | SQL parametrizado, LIKE escapado, paginacion con LIMIT/OFFSET parametrizados, transaccion para evento | Seguro |
-| OperativaRepository | Compra, entradas, transferencias, validación y reportes | Venta, Entrada, Transferencia, Validacion, FuncionarioEventoSector | Claims, IDs y filtros | Tipados con MySqlParameter | Flujo operativo | Compra y validación transaccionales; precios ignorados del frontend; propietario por vista | Seguro |
+| OperativaRepository | Compra, entradas, transferencias, QR, validación y reportes | Venta, Entrada, Transferencia, Validacion, FuncionarioEventoSector | Claims, IDs, filtros y token QR firmado | Tipados con MySqlParameter | Flujo operativo | Compra y validación transaccionales; precios ignorados del frontend; propietario por vista; token QR validado por HMAC antes de insertar; renovación con permiso firmado sin escritura | Seguro |
 
 ## Health check
 

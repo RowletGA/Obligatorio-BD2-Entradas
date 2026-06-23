@@ -30,7 +30,8 @@ Los scripts originales son el contrato principal y no deben modificarse:
 Copiar `src/TicketingMundial.Web/appsettings.example.json` a `src/TicketingMundial.Web/appsettings.Development.json` o configurar:
 
 ```bash
-ConnectionStrings__MySql="Server=localhost;Port=3306;Database=IC_Grupo4;User ID=usuario;Password=contraseña;"
+ConnectionStrings__MySql="Server=HOST;Port=PUERTO;Database=BASE;User ID=USUARIO;Password=CONTRASENA;"
+QrSecurity__SigningKey="$(openssl rand -base64 32)"
 ```
 
 No guardar credenciales reales en Git.
@@ -41,9 +42,16 @@ No guardar credenciales reales en Git.
 {
   "ConnectionStrings": {
     "MySql": "Server=HOST;Port=PUERTO;Database=BASE;User ID=USUARIO;Password=CONTRASENA;SslMode=Preferred;AllowPublicKeyRetrieval=True;Connection Timeout=15;Default Command Timeout=30;"
+  },
+  "QrSecurity": {
+    "SigningKey": "CONFIGURAR_MEDIANTE_VARIABLE_DE_ENTORNO",
+    "LifetimeSeconds": 30,
+    "ClockSkewSeconds": 5
   }
 }
 ```
+
+El valor `CONFIGURAR_MEDIANTE_VARIABLE_DE_ENTORNO` es solo un marcador y la aplicación lo rechaza al iniciar. Generar una clave local con `openssl rand -base64 32` o definir `QrSecurity__SigningKey` como variable de entorno.
 
 Confirmar que no se versiona:
 
@@ -109,10 +117,11 @@ La creacion de eventos usa una transaccion MySQL sobre `Evento`, `EventoLocal`, 
 - Mis compras: `/Compras`.
 - Mis entradas: `/Entradas/MisEntradas`, usando propietario actual.
 - Transferencias: `/Transferencias`.
-- Funcionarios: `/Funcionario` y `/Funcionario/Validar`.
+- Funcionarios: `/Funcionario` y `/Funcionario/Escanear`.
 - Reportes: `/Admin/Reportes`.
 
 La compra usa transacción y no confía en precios enviados por el navegador.
+El QR dinámico usa HMAC-SHA256, vence cada 30 segundos y se valida contra propietario actual y asignación del funcionario. Para demo en una sola computadora, el usuario puede descargar el QR actual y el funcionario cargar esa imagen en `/Funcionario/Escanear`; la imagen se procesa en el navegador y el servidor recibe solo el token.
 
 Para probarlo desde el navegador:
 
@@ -155,12 +164,6 @@ Si un usuario tiene un solo rol, la aplicación activa ese perfil automáticamen
 
 Documento específico: `docs/PERFILES_Y_NAVEGACION.md`.
 
-## Frontend de referencia
-
-La carpeta `frontejemplo/` se uso solo como referencia visual: paneles blancos, fondo slate claro, acento teal, navegacion lateral en desktop y navegacion horizontal en movil.
-
-La aplicacion no enlaza CSS, JavaScript, imagenes ni componentes desde esa carpeta. Puede eliminarse sin afectar la ejecucion.
-
 ## Pruebas
 
 Las pruebas cubren:
@@ -177,6 +180,7 @@ Las pruebas cubren:
 - entradas maliciosas tratadas como texto;
 - traduccion de errores funcionales MySQL.
 - perfil activo, perfiles múltiples y formato monetario consistente.
+- tokens QR dinámicos, firma, expiración, tolerancia e invalidación por cambio de propietario.
 
 ## Limitacion de usuarios existentes
 

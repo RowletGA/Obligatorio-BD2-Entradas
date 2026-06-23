@@ -11,7 +11,7 @@ La solución es ASP.NET Core MVC con MySqlConnector y SQL parametrizado. No usa 
 3. Administración de estadios, sectores, equipos y eventos.
 4. Compra de entradas como Usuario General.
 5. Mis compras, Mis entradas y transferencias.
-6. Asignación y validación como Funcionario.
+6. QR dinámico, escaneo y validación como Funcionario.
 7. Reportes administrativos.
 
 ## Puntos para explicar
@@ -24,6 +24,9 @@ La solución es ASP.NET Core MVC con MySqlConnector y SQL parametrizado. No usa 
 - Asignaciones: los eventos cerrados no se ofrecen y los sectores salen de `EventoSector` filtrado por `IDEvento`, lo que evita duplicados y sectores incorrectos.
 - Compra: el navegador no envía precio confiable; el servidor recarga disponibilidad y precio.
 - Triggers: se respetan y sus errores funcionales se traducen para el usuario.
+- QR: el token no es JWT ni GUID en memoria; es HMAC-SHA256 con ventana de 30 segundos y marca de propietario derivada de `V_PropietarioActual`.
+- Renovación: usa un permiso temporal firmado de 5 minutos; dentro de esa vigencia no consulta ni escribe en la base para regenerar el QR cada 30 segundos.
+- Demo en una PC: descargar el QR actual como PNG y cargarlo en `/Funcionario/Escanear`; la imagen se decodifica en el navegador y no llega al servidor.
 
 ## Comandos
 
@@ -31,7 +34,7 @@ La solución es ASP.NET Core MVC con MySqlConnector y SQL parametrizado. No usa 
 dotnet restore TicketingMundial.sln
 dotnet build TicketingMundial.sln
 dotnet test TicketingMundial.sln
-ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/TicketingMundial.Web --urls http://localhost:5000
+QrSecurity__SigningKey="$(openssl rand -base64 32)" ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/TicketingMundial.Web --urls http://localhost:5000
 ```
 
 Si el ambiente tiene runtime mayor sin .NET 8 instalado:
@@ -52,5 +55,5 @@ DOTNET_ROLL_FORWARD=Major dotnet test TicketingMundial.sln
 - `/Entradas/MisEntradas`
 - `/Transferencias`
 - `/Funcionario`
-- `/Funcionario/Validar`
+- `/Funcionario/Escanear`
 - `/Admin/Reportes`

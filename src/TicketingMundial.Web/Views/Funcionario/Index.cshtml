@@ -1,10 +1,10 @@
 @model IReadOnlyList<AsignacionFuncionarioDto>
 @{ ViewData["Title"] = "Funcionario"; }
 <section class="page-heading"><p class="section-kicker">Funcionario</p><h1>Eventos asignados</h1></section>
-<section class="content-panel mb-3"><a class="btn btn-primary" asp-action="Validar">Validar entrada</a></section>
+<section class="content-panel mb-3"><a class="btn btn-primary" asp-action="Escanear">Escanear entradas</a></section>
 <section class="content-panel">
 @if (Model.Count == 0) { <p class="text-secondary mb-0">No tenés asignaciones.</p> }
-else { <div class="table-responsive"><table class="table"><thead><tr><th>Evento</th><th>Fecha</th><th>Estadio</th><th>Sector</th></tr></thead><tbody>
-@foreach (var a in Model) { <tr><td>@a.IdEvento</td><td>@a.FechaEvento.ToString("g")</td><td>@a.Estadio</td><td>@a.Sector</td></tr> }
+else { <div class="table-responsive"><table class="table"><thead><tr><th>Evento</th><th>Fecha</th><th>Estadio</th><th>Sector</th><th>Estado</th><th>Validadas</th><th></th></tr></thead><tbody>
+@foreach (var a in Model) { <tr><td>@a.IdEvento</td><td>@a.FechaEvento.ToString("dd/MM/yyyy HH:mm")</td><td>@a.Estadio</td><td>@a.Sector</td><td>@a.EstadoEvento</td><td>@a.EntradasValidadas</td><td>@(a.EntradasValidadas == 0 ? "Sin validaciones" : "Con actividad")</td></tr> }
 </tbody></table></div> }
 </section>

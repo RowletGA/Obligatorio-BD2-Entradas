@@ -52,11 +52,11 @@ public sealed class AsignarFuncionarioViewModel
     public IReadOnlyList<SelectListItem> Sectores { get; set; } = [];
 }
 
-public sealed class ValidarEntradaViewModel
+public sealed class ValidarQrViewModel
 {
     [Required]
-    public ulong IdEntrada { get; set; }
-    public string? Token { get; set; }
+    [StringLength(255)]
+    public string Token { get; set; } = string.Empty;
     public ValidacionEntradaDto? Resultado { get; set; }
 }
 
