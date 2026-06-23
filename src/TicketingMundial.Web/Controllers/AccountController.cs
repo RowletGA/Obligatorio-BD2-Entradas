@@ -208,7 +208,9 @@ public sealed class AccountController(
             TipoDocumento = User.GetTipoDocumento(),
             PaisDocumento = User.GetPaisDocumento(),
             NumeroDocumento = User.GetNumeroDocumento(),
-            Roles = User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToArray()
+            Roles = User.GetRolesReales(),
+            PerfilActivo = PerfilActivoExtensions.GetNombrePerfil(User.GetPerfilActivoSeguro() ?? string.Empty),
+            EsUsuarioGeneral = User.IsInRole(RolesAplicacion.UsuarioGeneral)
         };
 
         return View(model);

@@ -32,6 +32,7 @@ public sealed class EventoRepository(
             """);
 
         var parameters = new List<MySqlParameter>();
+        EnsureSqlLineBreak(sql);
 
         if (filtro.Desde.HasValue)
         {
@@ -42,7 +43,7 @@ public sealed class EventoRepository(
         if (filtro.Hasta.HasValue)
         {
             sql.AppendLine("AND FechaHora <= @Hasta");
-            parameters.Add(new MySqlParameter("@Hasta", MySqlDbType.DateTime) { Value = filtro.Hasta.Value });
+            parameters.Add(new MySqlParameter("@Hasta", MySqlDbType.DateTime) { Value = NormalizeInclusiveHasta(filtro.Hasta.Value) });
         }
 
         if (filtro.IdEstadio.HasValue)
@@ -221,5 +222,20 @@ public sealed class EventoRepository(
             EquipoLocal = reader.GetNullableString("EquipoLocal"),
             EquipoVisitante = reader.GetNullableString("EquipoVisitante")
         };
+    }
+
+    private static DateTime NormalizeInclusiveHasta(DateTime hasta)
+    {
+        return hasta.TimeOfDay == TimeSpan.Zero
+            ? hasta.Date.AddDays(1).AddTicks(-1)
+            : hasta;
+    }
+
+    private static void EnsureSqlLineBreak(StringBuilder sql)
+    {
+        if (sql.Length > 0 && !char.IsWhiteSpace(sql[sql.Length - 1]))
+        {
+            sql.AppendLine();
+        }
     }
 }

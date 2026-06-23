@@ -1,6 +1,6 @@
 @model TransferenciaCrearViewModel
 @{ ViewData["Title"] = "Transferir entrada"; }
-<section class="page-heading"><p class="section-kicker">Transferencias</p><h1>Transferir entrada @Model.IdEntrada</h1></section>
+<section class="page-heading"><p class="section-kicker">Transferencias</p><h1>Transferir entrada</h1></section>
 <form asp-controller="Transferencias" asp-action="Crear" method="post" class="content-panel">
     <input type="hidden" asp-for="IdEntrada" />
     <label asp-for="CorreoDestino" class="form-label">Correo del destinatario</label>

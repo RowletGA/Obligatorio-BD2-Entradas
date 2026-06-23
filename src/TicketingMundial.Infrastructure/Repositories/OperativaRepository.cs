@@ -599,11 +599,15 @@ public sealed class OperativaRepository(
         var sql = $"""
             SELECT IDTransferencia, IDEntrada, FechaSolicitud, FechaRespuesta, EstadoTransferencia,
                    UsuarioOtorga, CorreoOtorga, UsuarioRecibe, CorreoRecibe,
-                   CONCAT('Evento ', IDEvento) AS Evento, FechaEvento,
-                   Estadio, NombreSector
-            FROM V_Transferencias
+                   CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) AS Evento,
+                   vt.FechaEvento, vt.Estadio, vt.NombreSector
+            FROM V_Transferencias vt
+            LEFT JOIN EventoLocal l ON l.IDEvento = vt.IDEvento
+            LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
+            LEFT JOIN EventoVisita vi ON vi.IDEvento = vt.IDEvento
+            LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
             WHERE Documento{prefix} = CONCAT(@TipoDocumento, ' ', @Numero)
-            ORDER BY FechaSolicitud DESC;
+            ORDER BY vt.FechaSolicitud DESC;
             """;
         return QueryListAsync(sql, cmd => AddDocumento(cmd, usuario), MapTransferencia, "listar transferencias", ct);
     }
@@ -701,6 +705,7 @@ public sealed class OperativaRepository(
 
     private static List<MySqlParameter> AddDateFilters(StringBuilder sql, DateTime? desde, DateTime? hasta, string column = "ev.FechaHora")
     {
+        EnsureSqlLineBreak(sql);
         var parameters = new List<MySqlParameter>();
         if (desde.HasValue)
         {
@@ -713,6 +718,14 @@ public sealed class OperativaRepository(
             parameters.Add(new MySqlParameter("@Hasta", MySqlDbType.DateTime) { Value = hasta.Value });
         }
         return parameters;
+    }
+
+    private static void EnsureSqlLineBreak(StringBuilder sql)
+    {
+        if (sql.Length > 0 && !char.IsWhiteSpace(sql[sql.Length - 1]))
+        {
+            sql.AppendLine();
+        }
     }
 
     private static CompraResumenDto MapCompraResumen(MySqlDataReader r) => new()

@@ -13,8 +13,16 @@ public sealed class ReportesController(IOperativaService operativaService) : Con
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] ReportesViewModel model, CancellationToken cancellationToken)
     {
-        model.Eventos = await operativaService.ReporteEventosVendidosAsync(model.Desde, model.Hasta, model.Limite, cancellationToken);
-        model.Compradores = await operativaService.ReporteCompradoresAsync(model.Desde, model.Hasta, model.Limite, cancellationToken);
+        var hasta = NormalizeInclusiveHasta(model.Hasta);
+        model.Eventos = await operativaService.ReporteEventosVendidosAsync(model.Desde, hasta, model.Limite, cancellationToken);
+        model.Compradores = await operativaService.ReporteCompradoresAsync(model.Desde, hasta, model.Limite, cancellationToken);
         return View(model);
+    }
+
+    private static DateTime? NormalizeInclusiveHasta(DateTime? hasta)
+    {
+        return hasta.HasValue && hasta.Value.TimeOfDay == TimeSpan.Zero
+            ? hasta.Value.Date.AddDays(1).AddTicks(-1)
+            : hasta;
     }
 }

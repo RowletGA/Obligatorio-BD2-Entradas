@@ -1,11 +1,11 @@
 @model CompraDetalleDto
 @{
-    ViewData["Title"] = $"Compra {Model.Venta.IdVenta}";
+    ViewData["Title"] = "Detalle de compra";
 }
-<section class="page-heading"><p class="section-kicker">Compra</p><h1>Compra @Model.Venta.IdVenta</h1><p>@Model.Venta.FechaVenta.ToString("g") · @Model.Venta.EstadoVenta</p></section>
+<section class="page-heading"><p class="section-kicker">Compra</p><h1>Detalle de compra</h1><p>@Model.Venta.FechaVenta.ToString("dd/MM/yyyy HH:mm") · @Model.Venta.EstadoVenta</p></section>
 <section class="content-panel">
 <div class="detail-grid mb-3"><div><span>Entradas</span><strong>@Model.Venta.CantidadEntradas</strong></div><div><span>Comisión</span><strong>@Model.Venta.PorcentajeComision.ToString("N2")%</strong></div><div><span>Total</span><strong>@MoneyFormatter.Format(Model.Venta.MontoTotal)</strong></div></div>
 <div class="table-responsive"><table class="table"><thead><tr><th>Entrada</th><th>Evento</th><th>Sector</th><th>Estado</th><th>Costo</th></tr></thead><tbody>
-@foreach (var e in Model.Entradas) { <tr><td>@e.IdEntrada</td><td>@e.Evento</td><td>@e.Sector</td><td>@e.EstadoEntrada</td><td>@MoneyFormatter.Format(e.Costo)</td></tr> }
+@for (var i = 0; i < Model.Entradas.Count; i++) { var e = Model.Entradas[i]; <tr><td>@($"ENT-{i + 1:000}")</td><td>@e.Evento</td><td>@e.Sector</td><td>@e.EstadoEntrada</td><td>@MoneyFormatter.Format(e.Costo)</td></tr> }
 </tbody></table></div>
 </section>

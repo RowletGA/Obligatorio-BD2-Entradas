@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Detalle de evento";
     var evento = Model.Evento;
+    var puedeComprar = User.IsInRole(RolesAplicacion.UsuarioGeneral) && evento.Estado == "PROGRAMADO";
+    var hayDisponibles = evento.Sectores.Any(s => s.LugaresDisponibles > 0);
 }
 
 <section class="mb-4">
@@ -31,75 +33,63 @@
     </div>
 </section>
 
-@if (User.IsInRole(RolesAplicacion.UsuarioGeneral) && evento.Estado == "PROGRAMADO" && evento.Sectores.Any(s => s.LugaresDisponibles > 0))
-{
-    <section class="content-panel mt-4">
-        <h2 class="h5">Comprar entradas</h2>
-        <form asp-controller="Compras" asp-action="Confirmar" method="post">
-            <input type="hidden" name="IdEvento" value="@evento.IdEvento" />
-            <div class="table-responsive">
-                <table class="table align-middle">
-                    <thead><tr><th>Sector</th><th>Disponibles</th><th>Cantidad</th></tr></thead>
-                    <tbody>
-                    @for (var i = 0; i < evento.Sectores.Count; i++)
-                    {
-                        <tr>
-                            <td>@evento.Sectores[i].NombreSector</td>
-                            <td>@evento.Sectores[i].LugaresDisponibles</td>
-                            <td style="max-width: 160px">
-                                <input type="hidden" name="Sectores[@i].IdSector" value="@evento.Sectores[i].IdSector" />
-                                <input name="Sectores[@i].Cantidad" class="form-control" type="number" min="0" max="5" value="0" />
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-            <button class="btn btn-primary">Continuar</button>
-        </form>
-    </section>
-}
-
 <section class="content-panel">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h5 mb-0">Disponibilidad por sector</h2>
+        <h2 class="h5 mb-0">Comprar entradas</h2>
     </div>
-    <div class="table-responsive">
-        <table class="table align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>Sector</th>
-                    <th class="text-end">Precio</th>
-                    <th class="text-end">Capacidad</th>
-                    <th class="text-end">Emitidas</th>
-                    <th class="text-end">Disponibles</th>
-                </tr>
-            </thead>
-            <tbody>
-            @if (evento.Sectores.Count == 0)
-            {
-                <tr>
-                    <td colspan="5" class="text-center text-secondary py-4">No hay sectores habilitados para este evento.</td>
-                </tr>
-            }
-            else
-            {
-                @foreach (var sector in evento.Sectores)
+    <form asp-controller="Compras" asp-action="Confirmar" method="post">
+        <input type="hidden" name="IdEvento" value="@evento.IdEvento" />
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Sector</th>
+                        <th class="text-end">Precio</th>
+                        <th class="text-end">Emitidas</th>
+                        <th class="text-end">Disponibles</th>
+                        @if (puedeComprar)
+                        {
+                            <th class="text-end">Cantidad</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                @if (evento.Sectores.Count == 0)
                 {
                     <tr>
-                        <td class="fw-semibold">@sector.NombreSector</td>
-                        <td class="text-end">@MoneyFormatter.Format(sector.PrecioBase)</td>
-                        <td class="text-end">@sector.Capacidad</td>
-                        <td class="text-end">@sector.EntradasEmitidas</td>
-                        <td class="text-end">
-                            <span class="badge @(sector.LugaresDisponibles > 0 ? "text-bg-success" : "text-bg-danger")">
-                                @sector.LugaresDisponibles
-                            </span>
-                        </td>
+                        <td colspan="@(puedeComprar ? 5 : 4)" class="text-center text-secondary py-4">No hay sectores habilitados para este evento.</td>
                     </tr>
                 }
-            }
-            </tbody>
-        </table>
-    </div>
+                else
+                {
+                    @for (var i = 0; i < evento.Sectores.Count; i++)
+                    {
+                        var sector = evento.Sectores[i];
+                        <tr>
+                            <td class="fw-semibold">@sector.NombreSector</td>
+                            <td class="text-end">@MoneyFormatter.Format(sector.PrecioBase)</td>
+                            <td class="text-end">@sector.EntradasEmitidas</td>
+                            <td class="text-end">
+                                <span class="badge @(sector.LugaresDisponibles > 0 ? "text-bg-success" : "text-bg-danger")">
+                                @sector.LugaresDisponibles
+                                </span>
+                            </td>
+                            @if (puedeComprar)
+                            {
+                                <td class="text-end" style="width: 160px">
+                                    <input type="hidden" name="Sectores[@i].IdSector" value="@sector.IdSector" />
+                                    <input name="Sectores[@i].Cantidad" class="form-control text-end" type="number" min="0" max="5" value="0" disabled="@(sector.LugaresDisponibles <= 0)" />
+                                </td>
+                            }
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (puedeComprar && hayDisponibles)
+        {
+            <button class="btn btn-primary mt-3">Continuar</button>
+        }
+    </form>
 </section>

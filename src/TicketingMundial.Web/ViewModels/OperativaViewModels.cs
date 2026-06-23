@@ -33,6 +33,12 @@ public sealed class TransferenciasIndexViewModel
     public IReadOnlyList<TransferenciaDto> Recibidas { get; init; } = [];
 }
 
+public sealed class TransferenciasTablaViewModel
+{
+    public IReadOnlyList<TransferenciaDto> Transferencias { get; init; } = [];
+    public bool EsEnviadas { get; init; }
+}
+
 public sealed class AsignarFuncionarioViewModel
 {
     [Required]

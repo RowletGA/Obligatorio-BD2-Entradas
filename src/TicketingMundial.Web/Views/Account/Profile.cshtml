@@ -9,11 +9,46 @@
     <p>@Model.CorreoElectronico</p>
 </section>
 
-<section class="content-panel">
+<section class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="summary-tile">
+            <span>Perfil activo</span>
+            <strong>@Model.PerfilActivo</strong>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="summary-tile">
+            <span>Usuario general</span>
+            <strong>@(Model.EsUsuarioGeneral ? "Perfil asignado" : "No aplica")</strong>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="summary-tile">
+            <span>Roles</span>
+            <strong>@Model.Roles.Count</strong>
+        </div>
+    </div>
+</section>
+
+<section class="content-panel mb-3">
+    <h2 class="h5 mb-3">Datos personales</h2>
     <div class="detail-grid">
+        <div><span>Nombre</span><strong>@Model.Nombre</strong></div>
+        <div><span>Correo</span><strong>@Model.CorreoElectronico</strong></div>
         <div><span>Tipo documento</span><strong>@Model.TipoDocumento</strong></div>
         <div><span>País documento</span><strong>@Model.PaisDocumento</strong></div>
         <div><span>Número</span><strong>@Model.NumeroDocumento</strong></div>
-        <div><span>Roles</span><strong>@string.Join(", ", Model.Roles)</strong></div>
     </div>
+</section>
+
+<section class="content-panel">
+    <h2 class="h5 mb-3">Accesos</h2>
+    <div class="detail-grid">
+        <div><span>Perfiles asignados</span><strong>@string.Join(", ", Model.Roles.Select(PerfilActivoExtensions.GetNombrePerfil))</strong></div>
+        <div><span>Estado usuario general</span><strong>@(Model.EsUsuarioGeneral ? "Habilitado para comprar y transferir" : "Sin perfil Usuario General")</strong></div>
+    </div>
+    @if (User.TieneMultiplesPerfiles())
+    {
+        <a class="btn btn-outline-primary mt-3" asp-action="SeleccionarPerfil">Cambiar perfil</a>
+    }
 </section>
