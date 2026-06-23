@@ -40,6 +40,24 @@ En el formulario de evento, `Sector.Capacidad` se muestra solo como dato informa
 
 El campo editable por sector es `EventoSector.PrecioBase`, presentado como “Precio por entrada”. Debe ser mayor a cero y solo es obligatorio cuando el sector está marcado como habilitado. El servidor vuelve a consultar sectores del estadio y no confía en capacidad ni sector enviados desde el navegador.
 
+## Edición controlada de eventos
+
+Desde el detalle administrativo aparece `Editar evento` únicamente cuando el evento no tiene entradas emitidas y no está `FINALIZADO` ni `CANCELADO`.
+
+Si el evento no tiene entradas, la edición permite fecha, hora, estadio, equipos, sectores habilitados, precios y estado. El repositorio ejecuta la actualización dentro de una única transacción: actualiza `Evento`, reconstruye `EventoLocal` y `EventoVisita`, y sincroniza `EventoSector` conservando sectores vigentes, actualizando precios, insertando nuevos y eliminando solo desmarcados.
+
+Si el evento tiene entradas emitidas, el servidor rechaza cualquier edición estructural. La UI muestra advertencia y deja disponible el cambio de estado separado. La existencia de entradas se consulta desde base; no se acepta como dato confiable del formulario.
+
+Los eventos `FINALIZADO` y `CANCELADO` no permiten edición estructural ni nuevas asignaciones de funcionarios.
+
+## Asignación de funcionarios
+
+El selector de eventos muestra únicamente eventos de la jurisdicción del administrador con estado `PROGRAMADO` o `EN_CURSO`, ordenados por fecha ascendente.
+
+El selector de sectores depende del evento elegido y consulta exclusivamente `EventoSector` unido con `Sector`, filtrando por `IDEvento`. Esto evita duplicados y evita mostrar sectores del mismo estadio que no estén habilitados para ese evento.
+
+El POST vuelve a validar funcionario, evento asignable, jurisdicción, sector habilitado en `EventoSector`, correspondencia con estadio y duplicados en `FuncionarioEventoSector`.
+
 ## Triggers relevantes
 
 - `trg_evento_before_insert`: evita eventos en el mismo estadio dentro de una ventana de 2 horas.
@@ -70,4 +88,4 @@ Los errores `SQLSTATE 45000` se muestran como mensaje funcional.
 
 ## Extensiones futuras
 
-Edición limitada de eventos con ventas, asignación de funcionarios, reportes reales y exportación CSV.
+Exportación CSV, edición avanzada de eventos con reglas de negocio más finas y tablero de auditoría.

@@ -24,7 +24,10 @@ public interface IAdminRepository
     Task<ulong> CrearEquipoAsync(EquipoUpsertCommand command, CancellationToken cancellationToken);
     Task<bool> ActualizarEquipoAsync(EquipoUpsertCommand command, CancellationToken cancellationToken);
     Task<PagedResult<EventoAdminDto>> ListarEventosAsync(string paisSede, int page, int pageSize, CancellationToken cancellationToken);
+    Task<IReadOnlyList<EventoAdminDto>> ListarEventosAsignablesAsync(string paisSede, CancellationToken cancellationToken);
     Task<EventoAdminDto?> ObtenerEventoAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken);
+    Task<IReadOnlyList<EventoSectorAdminDto>> ListarSectoresHabilitadosEventoAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken);
     Task<ulong> CrearEventoAsync(EventoCreateCommand command, string paisSede, CancellationToken cancellationToken);
+    Task<bool> ActualizarEventoCompletoAsync(EventoUpdateCommand command, string paisSede, CancellationToken cancellationToken);
     Task<bool> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken);
 }

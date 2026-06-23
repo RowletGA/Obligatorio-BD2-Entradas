@@ -59,6 +59,34 @@ Caso D, funcionario y usuario general:
 4. Cambiar a Usuario General.
 5. Confirmar compras, entradas y transferencias.
 
+## Edición administrativa de eventos
+
+Caso edición sin ventas:
+
+1. Crear evento sin entradas.
+2. Abrir detalle administrativo.
+3. Entrar en `Editar evento`.
+4. Cambiar fecha, hora, estadio, equipos, sectores y precios.
+5. Guardar y confirmar que el detalle refleja los cambios.
+
+Caso edición con ventas:
+
+1. Abrir evento con entradas emitidas.
+2. Confirmar advertencia en detalle.
+3. Confirmar que no aparece edición estructural.
+4. Cambiar estado desde la acción separada.
+5. Intentar manipular POST estructural y confirmar rechazo del servidor.
+
+Caso asignación:
+
+1. Abrir `/Admin/Funcionarios`.
+2. Confirmar que no aparecen eventos `FINALIZADO` ni `CANCELADO`.
+3. Seleccionar evento `PROGRAMADO`.
+4. Confirmar sectores habilitados sin duplicados.
+5. Cambiar de evento y confirmar que cambia la lista completa de sectores.
+6. Crear asignación válida.
+7. Intentar duplicarla y confirmar mensaje claro.
+
 Resultado esperado:
 
 - Compra confirmada.

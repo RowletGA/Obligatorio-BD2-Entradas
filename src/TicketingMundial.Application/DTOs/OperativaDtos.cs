@@ -102,6 +102,7 @@ public sealed class AsignacionFuncionarioDto
     public string NumLegajo { get; init; } = string.Empty;
     public ulong IdEvento { get; init; }
     public DateTime FechaEvento { get; init; }
+    public string EstadoEvento { get; init; } = string.Empty;
     public ulong IdSector { get; init; }
     public string Sector { get; init; } = string.Empty;
     public string Estadio { get; init; } = string.Empty;

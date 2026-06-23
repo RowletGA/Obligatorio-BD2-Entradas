@@ -20,6 +20,8 @@ La solución es ASP.NET Core MVC con MySqlConnector y SQL parametrizado. No usa 
 - Perfil activo: solo cambia navegación y dashboard; no da permisos.
 - Seguridad: `[Authorize(Roles = "...")]`, antiforgery, cookies `HttpOnly`, SQL parametrizado y rate limiting en login.
 - Evento: `Sector.Capacidad` es dato del sector; `EventoSector.PrecioBase` es precio por entrada para ese evento.
+- Edición de evento: si no hay entradas, se actualizan evento, equipos y sectores en transacción. Si hay entradas, se bloquea edición estructural para no invalidar entradas ya emitidas.
+- Asignaciones: los eventos cerrados no se ofrecen y los sectores salen de `EventoSector` filtrado por `IDEvento`, lo que evita duplicados y sectores incorrectos.
 - Compra: el navegador no envía precio confiable; el servidor recarga disponibilidad y precio.
 - Triggers: se respetan y sus errores funcionales se traducen para el usuario.
 

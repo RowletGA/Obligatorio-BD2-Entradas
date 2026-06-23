@@ -196,74 +196,101 @@ public sealed class AdminService(
         return await adminRepository.ListarEventosAsync(admin.PaisSede, ClampPage(page), ClampPageSize(pageSize), cancellationToken);
     }
 
+    public async Task<IReadOnlyList<EventoAdminDto>> ListarEventosAsignablesAsync(DocumentoUsuario adminDocumento, CancellationToken cancellationToken)
+    {
+        var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
+        return await adminRepository.ListarEventosAsignablesAsync(admin.PaisSede, cancellationToken);
+    }
+
     public async Task<EventoAdminDto?> ObtenerEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, CancellationToken cancellationToken)
     {
         var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
         return await adminRepository.ObtenerEventoAsync(idEvento, admin.PaisSede, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<EventoSectorAdminDto>> ListarSectoresHabilitadosEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, CancellationToken cancellationToken)
+    {
+        var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
+        var evento = await adminRepository.ObtenerEventoAsync(idEvento, admin.PaisSede, cancellationToken);
+        if (evento is null || EsEstadoCerrado(evento.EstadoEvento))
+        {
+            return [];
+        }
+
+        return await adminRepository.ListarSectoresHabilitadosEventoAsync(idEvento, admin.PaisSede, cancellationToken);
+    }
+
     public async Task<OperationResult<ulong>> CrearEventoAsync(DocumentoUsuario adminDocumento, EventoCreateCommand command, CancellationToken cancellationToken)
     {
         var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
-        if (!EstadosPermitidos.Contains(command.EstadoEvento, StringComparer.OrdinalIgnoreCase))
+        var validation = await ValidateEventoFieldsAsync(
+            command.EstadoEvento,
+            command.Fecha,
+            command.Hora,
+            command.IdEstadio,
+            command.IdEquipoLocal,
+            command.IdEquipoVisitante,
+            command.Sectores,
+            admin.PaisSede,
+            cancellationToken);
+        if (!validation.Success)
         {
-            return OperationResult<ulong>.Failure("El estado del evento no es válido.");
-        }
-
-        if (command.IdEquipoLocal == command.IdEquipoVisitante)
-        {
-            return OperationResult<ulong>.Failure("El equipo local y visitante deben ser distintos.");
-        }
-
-        var fechaHora = command.Fecha.ToDateTime(command.Hora);
-        if (command.EstadoEvento.Equals(EstadoEvento.Programado, StringComparison.OrdinalIgnoreCase) && fechaHora <= DateTime.Now)
-        {
-            return OperationResult<ulong>.Failure("Un evento programado debe tener fecha y hora futura.");
-        }
-
-        var estadio = await adminRepository.ObtenerEstadioAsync(command.IdEstadio, admin.PaisSede, cancellationToken);
-        if (estadio is null)
-        {
-            return OperationResult<ulong>.Failure("El estadio seleccionado no pertenece a su jurisdicción.");
-        }
-
-        if (await adminRepository.ObtenerEquipoAsync(command.IdEquipoLocal, cancellationToken) is null ||
-            await adminRepository.ObtenerEquipoAsync(command.IdEquipoVisitante, cancellationToken) is null)
-        {
-            return OperationResult<ulong>.Failure("Debe seleccionar equipos existentes.");
-        }
-
-        var sectoresEstadio = await adminRepository.ListarSectoresPorEstadioAsync(command.IdEstadio, admin.PaisSede, cancellationToken);
-        var idsPermitidos = sectoresEstadio.Select(sector => sector.IdSector).ToHashSet();
-        var sectores = command.Sectores
-            .Where(sector => sector.IdSector > 0)
-            .GroupBy(sector => sector.IdSector)
-            .Select(group => group.First())
-            .ToArray();
-
-        if (sectores.Length == 0)
-        {
-            return OperationResult<ulong>.Failure("Debe habilitar al menos un sector.");
-        }
-
-        if (sectores.Any(sector => !idsPermitidos.Contains(sector.IdSector)))
-        {
-            return OperationResult<ulong>.Failure("Todos los sectores deben pertenecer al estadio seleccionado.");
-        }
-
-        if (sectores.Any(sector => sector.PrecioBase <= 0))
-        {
-            return OperationResult<ulong>.Failure("El precio por entrada debe ser mayor a cero.");
+            return OperationResult<ulong>.Failure(validation.Message ?? "El evento no es válido.");
         }
 
         var normalized = command with
         {
             EstadoEvento = command.EstadoEvento.Trim().ToUpperInvariant(),
-            Sectores = sectores
+            Sectores = NormalizeSectores(command.Sectores)
         };
 
         var id = await adminRepository.CrearEventoAsync(normalized, admin.PaisSede, cancellationToken);
         return OperationResult<ulong>.Ok(id, "Evento creado correctamente.");
+    }
+
+    public async Task<OperationResult> EditarEventoAsync(DocumentoUsuario adminDocumento, EventoUpdateCommand command, CancellationToken cancellationToken)
+    {
+        var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
+        var actual = await adminRepository.ObtenerEventoAsync(command.IdEvento, admin.PaisSede, cancellationToken);
+        if (actual is null)
+        {
+            return OperationResult.Failure("No se encontró el evento dentro de su jurisdicción.");
+        }
+
+        if (actual.EntradasEmitidas > 0)
+        {
+            return OperationResult.Failure("Este evento ya tiene entradas emitidas. Para preservar la consistencia de las entradas, solamente puede modificarse su estado.");
+        }
+
+        if (EsEstadoCerrado(actual.EstadoEvento))
+        {
+            return OperationResult.Failure("Los eventos finalizados o cancelados no permiten edición estructural.");
+        }
+
+        var validation = await ValidateEventoFieldsAsync(
+            command.EstadoEvento,
+            command.Fecha,
+            command.Hora,
+            command.IdEstadio,
+            command.IdEquipoLocal,
+            command.IdEquipoVisitante,
+            command.Sectores,
+            admin.PaisSede,
+            cancellationToken);
+        if (!validation.Success)
+        {
+            return validation;
+        }
+
+        var normalized = command with
+        {
+            EstadoEvento = command.EstadoEvento.Trim().ToUpperInvariant(),
+            Sectores = NormalizeSectores(command.Sectores)
+        };
+        var updated = await adminRepository.ActualizarEventoCompletoAsync(normalized, admin.PaisSede, cancellationToken);
+        return updated
+            ? OperationResult.Ok("Evento actualizado correctamente.")
+            : OperationResult.Failure("No se encontró el evento dentro de su jurisdicción.");
     }
 
     public async Task<OperationResult> CambiarEstadoEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, string estado, CancellationToken cancellationToken)
@@ -313,6 +340,82 @@ public sealed class AdminService(
     private static string? NullIfWhiteSpace(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private async Task<OperationResult> ValidateEventoFieldsAsync(
+        string estadoEvento,
+        DateOnly fecha,
+        TimeOnly hora,
+        ulong idEstadio,
+        ulong idEquipoLocal,
+        ulong idEquipoVisitante,
+        IReadOnlyList<EventoSectorCreateCommand> sectoresCommand,
+        string paisSede,
+        CancellationToken cancellationToken)
+    {
+        var estado = estadoEvento.Trim().ToUpperInvariant();
+        if (!EstadosPermitidos.Contains(estado, StringComparer.Ordinal))
+        {
+            return OperationResult.Failure("El estado del evento no es válido.");
+        }
+
+        if (idEquipoLocal == idEquipoVisitante)
+        {
+            return OperationResult.Failure("El equipo local y visitante deben ser distintos.");
+        }
+
+        var fechaHora = fecha.ToDateTime(hora);
+        if (estado.Equals(EstadoEvento.Programado, StringComparison.Ordinal) && fechaHora <= DateTime.Now)
+        {
+            return OperationResult.Failure("Un evento programado debe tener fecha y hora futura.");
+        }
+
+        var estadio = await adminRepository.ObtenerEstadioAsync(idEstadio, paisSede, cancellationToken);
+        if (estadio is null)
+        {
+            return OperationResult.Failure("El estadio seleccionado no pertenece a su jurisdicción.");
+        }
+
+        if (await adminRepository.ObtenerEquipoAsync(idEquipoLocal, cancellationToken) is null ||
+            await adminRepository.ObtenerEquipoAsync(idEquipoVisitante, cancellationToken) is null)
+        {
+            return OperationResult.Failure("Debe seleccionar equipos existentes.");
+        }
+
+        var sectoresEstadio = await adminRepository.ListarSectoresPorEstadioAsync(idEstadio, paisSede, cancellationToken);
+        var idsPermitidos = sectoresEstadio.Select(sector => sector.IdSector).ToHashSet();
+        var sectores = NormalizeSectores(sectoresCommand);
+        if (sectores.Count == 0)
+        {
+            return OperationResult.Failure("Debe habilitar al menos un sector.");
+        }
+
+        if (sectores.Any(sector => !idsPermitidos.Contains(sector.IdSector)))
+        {
+            return OperationResult.Failure("Todos los sectores deben pertenecer al estadio seleccionado.");
+        }
+
+        if (sectores.Any(sector => sector.PrecioBase <= 0))
+        {
+            return OperationResult.Failure("El precio por entrada debe ser mayor a cero.");
+        }
+
+        return OperationResult.Ok();
+    }
+
+    private static IReadOnlyList<EventoSectorCreateCommand> NormalizeSectores(IReadOnlyList<EventoSectorCreateCommand> sectores)
+    {
+        return sectores
+            .Where(sector => sector.IdSector > 0)
+            .GroupBy(sector => sector.IdSector)
+            .Select(group => group.First())
+            .ToArray();
+    }
+
+    private static bool EsEstadoCerrado(string estado)
+    {
+        return estado.Equals(EstadoEvento.Finalizado, StringComparison.OrdinalIgnoreCase) ||
+            estado.Equals(EstadoEvento.Cancelado, StringComparison.OrdinalIgnoreCase);
     }
 
     private static int ClampPage(int page)

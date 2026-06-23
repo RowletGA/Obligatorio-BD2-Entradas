@@ -1,6 +1,7 @@
 @model EventoAdminDto
 @{
     ViewData["Title"] = $"Evento {Model.IdEvento}";
+    var edicionBloqueada = Model.EntradasEmitidas > 0 || Model.EstadoEvento is "FINALIZADO" or "CANCELADO";
 }
 
 <section class="page-heading">
@@ -10,20 +11,37 @@
 </section>
 
 <section class="content-panel mb-3">
+    @if (Model.EntradasEmitidas > 0)
+    {
+        <div class="alert alert-warning">
+            Este evento ya tiene entradas emitidas. Para preservar la consistencia de las entradas, solamente puede modificarse su estado.
+        </div>
+    }
+    else if (Model.EstadoEvento is "FINALIZADO" or "CANCELADO")
+    {
+        <div class="alert alert-warning">Los eventos finalizados o cancelados no permiten edición estructural.</div>
+    }
     <div class="detail-grid">
         <div><span>Estado</span><strong>@Model.EstadoEvento</strong></div>
         <div><span>Estadio</span><strong>@Model.Estadio</strong></div>
         <div><span>País</span><strong>@Model.PaisEstadio</strong></div>
+        <div><span>Entradas emitidas</span><strong>@Model.EntradasEmitidas</strong></div>
     </div>
-    <form asp-action="CambiarEstadoEvento" asp-route-id="@Model.IdEvento" method="post" class="d-flex flex-wrap gap-2 mt-3">
-        <select name="EstadoEvento" class="form-select" style="max-width: 220px">
-            @foreach (var estado in new[] { "PROGRAMADO", "EN_CURSO", "FINALIZADO", "CANCELADO" })
-            {
-                <option value="@estado" selected="@(estado == Model.EstadoEvento)">@estado</option>
-            }
-        </select>
-        <button class="btn btn-outline-primary">Cambiar estado</button>
-    </form>
+    <div class="d-flex flex-wrap gap-2 mt-3">
+        @if (!edicionBloqueada)
+        {
+            <a class="btn btn-primary" asp-action="EditarEvento" asp-route-id="@Model.IdEvento">Editar evento</a>
+        }
+        <form asp-action="CambiarEstadoEvento" asp-route-id="@Model.IdEvento" method="post" class="d-flex flex-wrap gap-2">
+            <select name="EstadoEvento" class="form-select" style="max-width: 220px">
+                @foreach (var estado in new[] { "PROGRAMADO", "EN_CURSO", "FINALIZADO", "CANCELADO" })
+                {
+                    <option value="@estado" selected="@(estado == Model.EstadoEvento)">@estado</option>
+                }
+            </select>
+            <button class="btn btn-outline-primary">Cambiar estado</button>
+        </form>
+    </div>
 </section>
 
 <section class="content-panel">
@@ -36,11 +54,11 @@
     {
         <div class="table-responsive">
             <table class="table align-middle">
-                <thead><tr><th>Sector</th><th>Precio base</th></tr></thead>
+                <thead><tr><th>Sector</th><th>Capacidad</th><th>Precio por entrada</th></tr></thead>
                 <tbody>
                 @foreach (var sector in Model.Sectores)
                 {
-                    <tr><td>@sector.NombreSector</td><td>@MoneyFormatter.Format(sector.PrecioBase)</td></tr>
+                    <tr><td>@sector.NombreSector</td><td>@sector.Capacidad</td><td>@MoneyFormatter.Format(sector.PrecioBase)</td></tr>
                 }
                 </tbody>
             </table>

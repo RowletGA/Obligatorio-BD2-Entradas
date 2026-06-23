@@ -164,4 +164,89 @@ document.addEventListener('DOMContentLoaded', () => {
         checkbox.addEventListener('change', () => syncSectorPrice(true));
         syncSectorPrice(false);
     });
+
+    const asignacionForm = document.querySelector('[data-asignacion-form]');
+    if (asignacionForm instanceof HTMLFormElement) {
+        const eventoSelect = asignacionForm.querySelector('[data-evento-select]');
+        const sectorSelect = asignacionForm.querySelector('[data-sector-select]');
+        const funcionarioSelect = asignacionForm.querySelector('[data-funcionario-select]');
+        const status = asignacionForm.querySelector('[data-sector-status]');
+        const button = asignacionForm.querySelector('[data-asignar-button]');
+        const sectoresUrl = asignacionForm.dataset.sectoresUrl || '';
+
+        const setStatus = (text) => {
+            if (status instanceof HTMLElement) {
+                status.textContent = text;
+            }
+        };
+
+        const refreshButton = () => {
+            if (button instanceof HTMLButtonElement &&
+                eventoSelect instanceof HTMLSelectElement &&
+                sectorSelect instanceof HTMLSelectElement &&
+                funcionarioSelect instanceof HTMLSelectElement) {
+                button.disabled = !eventoSelect.value || !sectorSelect.value || !funcionarioSelect.value || sectorSelect.disabled;
+            }
+        };
+
+        const replaceSectorOptions = (label) => {
+            if (sectorSelect instanceof HTMLSelectElement) {
+                sectorSelect.replaceChildren();
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = label;
+                sectorSelect.appendChild(option);
+            }
+        };
+
+        const loadSectores = async () => {
+            if (!(eventoSelect instanceof HTMLSelectElement) || !(sectorSelect instanceof HTMLSelectElement)) {
+                return;
+            }
+
+            replaceSectorOptions('Cargando sectores...');
+            sectorSelect.disabled = true;
+            setStatus('Cargando sectores...');
+            refreshButton();
+
+            if (!eventoSelect.value) {
+                replaceSectorOptions('Seleccionar evento primero');
+                setStatus('');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${sectoresUrl}?idEvento=${encodeURIComponent(eventoSelect.value)}`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                const sectores = response.ok ? await response.json() : [];
+                replaceSectorOptions(sectores.length === 0 ? 'Este evento no tiene sectores habilitados' : 'Seleccionar sector');
+                const ids = new Set();
+                sectores.forEach((sector) => {
+                    if (ids.has(sector.idSector)) {
+                        return;
+                    }
+
+                    ids.add(sector.idSector);
+                    const option = document.createElement('option');
+                    option.value = sector.idSector;
+                    option.textContent = `${sector.nombre} · Capacidad ${sector.capacidad}`;
+                    sectorSelect.appendChild(option);
+                });
+                sectorSelect.disabled = sectores.length === 0;
+                setStatus(sectores.length === 0 ? 'Este evento no tiene sectores habilitados.' : '');
+            } catch {
+                replaceSectorOptions('No se pudieron cargar sectores');
+                sectorSelect.disabled = true;
+                setStatus('No se pudieron cargar sectores.');
+            }
+
+            refreshButton();
+        };
+
+        eventoSelect?.addEventListener('change', loadSectores);
+        sectorSelect?.addEventListener('change', refreshButton);
+        funcionarioSelect?.addEventListener('change', refreshButton);
+        refreshButton();
+    }
 });

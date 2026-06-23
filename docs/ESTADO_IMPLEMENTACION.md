@@ -123,3 +123,25 @@ Limitaciones:
 
 - El entorno local tiene runtime .NET 10 y no .NET 8; para ejecutar tests se usó `DOTNET_ROLL_FORWARD=Major`.
 - Historial de validaciones se mantiene en el alcance actual de funcionario/asignaciones sin pantalla nueva específica.
+
+## 2026-06-22 - Corrección edición de eventos y asignaciones
+
+Funcionalidades:
+
+- Botón `Editar evento` en detalle administrativo solo cuando el evento permite edición estructural.
+- Edición completa de evento sin entradas emitidas: fecha, hora, estadio, equipos, sectores, precios y estado.
+- Bloqueo servidor para edición estructural cuando existen entradas emitidas.
+- Bloqueo servidor para eventos `FINALIZADO` y `CANCELADO`.
+- Actualización transaccional de `Evento`, `EventoLocal`, `EventoVisita` y `EventoSector`.
+- Selector de eventos para funcionarios filtrado a `PROGRAMADO` y `EN_CURSO`.
+- Endpoint `/Admin/Funcionarios/SectoresPorEvento` con sectores habilitados por `EventoSector`.
+- Validación server-side de sector habilitado por evento y asignación duplicada.
+
+Pruebas:
+
+- `dotnet build TicketingMundial.sln`: correcto, 0 warnings.
+- `DOTNET_ROLL_FORWARD=Major dotnet test TicketingMundial.sln`: 98 exitosas.
+
+Limitaciones:
+
+- La prueba manual autenticada depende de usuarios demo con roles cargados en la base.

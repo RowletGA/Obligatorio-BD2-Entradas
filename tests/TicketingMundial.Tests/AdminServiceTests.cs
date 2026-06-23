@@ -117,6 +117,79 @@ public sealed class AdminServiceTests
         Assert.Contains("precio", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task EditarEventoAsync_PermiteEdicionCompleta_SinEntradas()
+    {
+        var repository = new FakeAdminRepository();
+        var service = CreateService(repository);
+
+        var result = await service.EditarEventoAsync(AdminDocumento, CreateUpdateCommand(), CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.True(repository.EventoActualizado);
+    }
+
+    [Fact]
+    public async Task EditarEventoAsync_BloqueaCambioEstructural_ConEntradas()
+    {
+        var service = CreateService(new FakeAdminRepository { EntradasEmitidas = 1 });
+
+        var result = await service.EditarEventoAsync(AdminDocumento, CreateUpdateCommand(idEstadio: 9), CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("entradas emitidas", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("FINALIZADO")]
+    [InlineData("CANCELADO")]
+    public async Task EditarEventoAsync_BloqueaEdicionEstructural_EnEventosCerrados(string estado)
+    {
+        var service = CreateService(new FakeAdminRepository { EstadoEvento = estado });
+
+        var result = await service.EditarEventoAsync(AdminDocumento, CreateUpdateCommand(), CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("no permiten", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task EditarEventoAsync_RechazaLocalIgualAVisitante()
+    {
+        var service = CreateService(new FakeAdminRepository());
+
+        var result = await service.EditarEventoAsync(AdminDocumento, CreateUpdateCommand(idEquipoVisitante: 10), CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("distintos", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task EditarEventoAsync_RechazaSectorDeOtroEstadio()
+    {
+        var service = CreateService(new FakeAdminRepository());
+
+        var result = await service.EditarEventoAsync(AdminDocumento, CreateUpdateCommand(idSector: 99), CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("sectores", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static EventoUpdateCommand CreateUpdateCommand(ulong idEstadio = 1, ulong idEquipoVisitante = 11, ulong idSector = 2)
+    {
+        return new EventoUpdateCommand
+        {
+            IdEvento = 7,
+            Fecha = DateOnly.FromDateTime(DateTime.Today.AddDays(2)),
+            Hora = new TimeOnly(20, 0),
+            IdEstadio = idEstadio,
+            IdEquipoLocal = 10,
+            IdEquipoVisitante = idEquipoVisitante,
+            EstadoEvento = "PROGRAMADO",
+            Sectores = [new EventoSectorCreateCommand { IdSector = idSector, PrecioBase = 100 }]
+        };
+    }
+
     private static AdminService CreateService(IAdminRepository repository)
     {
         var catalogo = new CatalogoRegistroService(Options.Create(new CatalogosRegistroOptions
@@ -137,6 +210,9 @@ public sealed class AdminServiceTests
     private sealed class FakeAdminRepository : IAdminRepository
     {
         public bool EstadioVisible { get; init; } = true;
+        public int EntradasEmitidas { get; init; }
+        public string EstadoEvento { get; init; } = "PROGRAMADO";
+        public bool EventoActualizado { get; private set; }
 
         public Task<AdministradorActualDto?> ObtenerAdministradorAsync(DocumentoUsuario documento, CancellationToken cancellationToken)
         {
@@ -161,6 +237,26 @@ public sealed class AdminServiceTests
         }
 
         public Task<bool> ExisteSectorNombreAsync(ulong idEstadio, string nombreSector, ulong? excludingId, CancellationToken cancellationToken) => Task.FromResult(false);
+        public Task<IReadOnlyList<EventoAdminDto>> ListarEventosAsignablesAsync(string paisSede, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<EventoAdminDto>>([]);
+        public Task<EventoAdminDto?> ObtenerEventoAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken) => Task.FromResult<EventoAdminDto?>(new EventoAdminDto
+        {
+            IdEvento = idEvento,
+            FechaHora = DateTime.Today.AddDays(2),
+            EstadoEvento = EstadoEvento,
+            IdEstadio = 1,
+            Estadio = "Demo",
+            PaisEstadio = paisSede,
+            IdEquipoLocal = 10,
+            IdEquipoVisitante = 11,
+            EntradasEmitidas = EntradasEmitidas,
+            Sectores = [new EventoSectorAdminDto { IdSector = 2, NombreSector = "Tribuna", Capacidad = 100, PrecioBase = 100 }]
+        });
+        public Task<IReadOnlyList<EventoSectorAdminDto>> ListarSectoresHabilitadosEventoAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<EventoSectorAdminDto>>([new EventoSectorAdminDto { IdSector = 2, NombreSector = "Tribuna", Capacidad = 100, PrecioBase = 100 }]);
+        public Task<bool> ActualizarEventoCompletoAsync(EventoUpdateCommand command, string paisSede, CancellationToken cancellationToken)
+        {
+            EventoActualizado = true;
+            return Task.FromResult(true);
+        }
         public Task<AdminDashboardDto> ObtenerDashboardAsync(string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<PagedResult<EstadioAdminDto>> ListarEstadiosAsync(string paisSede, string? busqueda, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<EstadioAdminDto>> ListarEstadiosParaSeleccionAsync(string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
@@ -175,7 +271,6 @@ public sealed class AdminServiceTests
         public Task<ulong> CrearEquipoAsync(EquipoUpsertCommand command, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> ActualizarEquipoAsync(EquipoUpsertCommand command, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<PagedResult<EventoAdminDto>> ListarEventosAsync(string paisSede, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<EventoAdminDto?> ObtenerEventoAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ulong> CrearEventoAsync(EventoCreateCommand command, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
     }

@@ -61,6 +61,7 @@ public sealed class EventoAdminDto
     public string? EquipoLocal { get; init; }
     public ulong? IdEquipoVisitante { get; init; }
     public string? EquipoVisitante { get; init; }
+    public int EntradasEmitidas { get; init; }
     public IReadOnlyList<EventoSectorAdminDto> Sectores { get; init; } = [];
 }
 
@@ -68,6 +69,7 @@ public sealed class EventoSectorAdminDto
 {
     public ulong IdSector { get; init; }
     public string NombreSector { get; init; } = string.Empty;
+    public uint Capacidad { get; init; }
     public decimal PrecioBase { get; init; }
 }
 
@@ -107,6 +109,18 @@ public sealed record EquipoUpsertCommand
 
 public sealed record EventoCreateCommand
 {
+    public DateOnly Fecha { get; init; }
+    public TimeOnly Hora { get; init; }
+    public ulong IdEstadio { get; init; }
+    public ulong IdEquipoLocal { get; init; }
+    public ulong IdEquipoVisitante { get; init; }
+    public string EstadoEvento { get; init; } = "PROGRAMADO";
+    public IReadOnlyList<EventoSectorCreateCommand> Sectores { get; init; } = [];
+}
+
+public sealed record EventoUpdateCommand
+{
+    public ulong IdEvento { get; init; }
     public DateOnly Fecha { get; init; }
     public TimeOnly Hora { get; init; }
     public ulong IdEstadio { get; init; }

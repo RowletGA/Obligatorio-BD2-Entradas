@@ -78,6 +78,8 @@ public sealed class EquipoFormViewModel
 
 public sealed class EventoCreateViewModel
 {
+    public ulong? IdEvento { get; set; }
+
     [Required]
     public DateOnly Fecha { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
 
@@ -100,6 +102,9 @@ public sealed class EventoCreateViewModel
     public IReadOnlyList<SelectListItem> Estadios { get; set; } = [];
     public IReadOnlyList<SelectListItem> Equipos { get; set; } = [];
     public IReadOnlyList<SelectListItem> Estados { get; set; } = [];
+    public int EntradasEmitidas { get; set; }
+    public bool EdicionBloqueada { get; set; }
+    public string? AdvertenciaEdicion { get; set; }
 }
 
 public sealed class EventoSectorFormViewModel

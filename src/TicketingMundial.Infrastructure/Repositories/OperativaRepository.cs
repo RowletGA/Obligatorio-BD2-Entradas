@@ -271,13 +271,89 @@ public sealed class OperativaRepository(
     {
         const string sql = """
             SELECT v.TipoDocumento, v.PaisDocumento, v.Numero, v.Funcionario, v.NumLegajo,
-                   v.IDEvento, v.FechaEvento, v.IDSector, v.NombreSector, ev.Estadio
+                   v.IDEvento, v.FechaEvento, ev.EstadoEvento, v.IDSector, v.NombreSector, ev.Estadio
             FROM V_ValidacionesPorFuncionario v
             INNER JOIN V_Eventos ev ON ev.IDEvento = v.IDEvento
             WHERE ev.PaisEstadio = @PaisSede
             ORDER BY v.FechaEvento DESC;
             """;
         return QueryListAsync(sql, cmd => cmd.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede, MapAsignacion, "listar asignaciones", cancellationToken);
+    }
+
+    public Task<bool> ExisteFuncionarioAsync(DocumentoUsuario funcionario, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM Funcionario
+                WHERE TipoDocumento = @TipoDocumento
+                  AND PaisDocumento = @PaisDocumento
+                  AND Numero = @Numero
+            );
+            """;
+        return ExecuteScalarBoolAsync(sql, cmd => AddDocumento(cmd, funcionario), "verificar funcionario", cancellationToken);
+    }
+
+    public Task<EventoAdminDto?> ObtenerEventoAsignableAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT v.IDEvento, v.FechaHora, v.EstadoEvento, v.IDEstadio, v.Estadio, v.PaisEstadio,
+                   v.IDEquipoLocal, v.EquipoLocal, v.IDEquipoVisitante, v.EquipoVisitante,
+                   (SELECT COUNT(*) FROM Entrada en WHERE en.IDEvento = v.IDEvento) AS EntradasEmitidas
+            FROM V_Eventos v
+            WHERE v.IDEvento = @IdEvento
+              AND v.PaisEstadio = @PaisSede
+              AND v.EstadoEvento IN ('PROGRAMADO', 'EN_CURSO');
+            """;
+        return QuerySingleAsync(sql, cmd =>
+        {
+            cmd.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+            cmd.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede;
+        }, MapEventoAsignable, "obtener evento asignable", cancellationToken);
+    }
+
+    public Task<bool> SectorHabilitadoParaEventoAsync(ulong idEvento, ulong idSector, string paisSede, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM EventoSector es
+                INNER JOIN Evento ev ON ev.IDEvento = es.IDEvento
+                INNER JOIN Estadio est ON est.IDEstadio = ev.IDEstadio
+                INNER JOIN Sector s ON s.IDSector = es.IDSector AND s.IDEstadio = ev.IDEstadio
+                WHERE es.IDEvento = @IdEvento
+                  AND es.IDSector = @IdSector
+                  AND est.UbicacionPais = @PaisSede
+                  AND ev.EstadoEvento IN ('PROGRAMADO', 'EN_CURSO')
+            );
+            """;
+        return ExecuteScalarBoolAsync(sql, cmd =>
+        {
+            cmd.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+            cmd.Parameters.Add("@IdSector", MySqlDbType.UInt64).Value = idSector;
+            cmd.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede;
+        }, "verificar sector habilitado", cancellationToken);
+    }
+
+    public Task<bool> ExisteAsignacionFuncionarioAsync(DocumentoUsuario funcionario, ulong idEvento, ulong idSector, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM FuncionarioEventoSector
+                WHERE TipoDocumento = @TipoDocumento
+                  AND PaisDocumento = @PaisDocumento
+                  AND Numero = @Numero
+                  AND IDEvento = @IdEvento
+                  AND IDSector = @IdSector
+            );
+            """;
+        return ExecuteScalarBoolAsync(sql, cmd =>
+        {
+            AddDocumento(cmd, funcionario);
+            cmd.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+            cmd.Parameters.Add("@IdSector", MySqlDbType.UInt64).Value = idSector;
+        }, "verificar asignación duplicada", cancellationToken);
     }
 
     public async Task AsignarFuncionarioAsync(DocumentoUsuario funcionario, ulong idEvento, ulong idSector, string paisSede, CancellationToken cancellationToken)
@@ -288,7 +364,20 @@ public sealed class OperativaRepository(
             FROM EventoSector es
             INNER JOIN Evento ev ON ev.IDEvento = es.IDEvento
             INNER JOIN Estadio est ON est.IDEstadio = ev.IDEstadio
-            WHERE es.IDEvento = @IdEvento AND es.IDSector = @IdSector AND est.UbicacionPais = @PaisSede;
+            INNER JOIN Sector s ON s.IDSector = es.IDSector AND s.IDEstadio = ev.IDEstadio
+            WHERE es.IDEvento = @IdEvento
+              AND es.IDSector = @IdSector
+              AND est.UbicacionPais = @PaisSede
+              AND ev.EstadoEvento IN ('PROGRAMADO', 'EN_CURSO')
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM FuncionarioEventoSector fs
+                  WHERE fs.TipoDocumento = @TipoDocumento
+                    AND fs.PaisDocumento = @PaisDocumento
+                    AND fs.Numero = @Numero
+                    AND fs.IDEvento = es.IDEvento
+                    AND fs.IDSector = es.IDSector
+              );
             """;
         var rows = await ExecuteNonQueryAsync(sql, cmd =>
         {
@@ -307,7 +396,7 @@ public sealed class OperativaRepository(
     {
         const string sql = """
             SELECT v.TipoDocumento, v.PaisDocumento, v.Numero, v.Funcionario, v.NumLegajo,
-                   v.IDEvento, v.FechaEvento, v.IDSector, v.NombreSector, ev.Estadio
+                   v.IDEvento, v.FechaEvento, ev.EstadoEvento, v.IDSector, v.NombreSector, ev.Estadio
             FROM V_ValidacionesPorFuncionario v
             INNER JOIN V_Eventos ev ON ev.IDEvento = v.IDEvento
             WHERE v.TipoDocumento = @TipoDocumento AND v.PaisDocumento = @PaisDocumento AND v.Numero = @Numero
@@ -574,6 +663,18 @@ public sealed class OperativaRepository(
         catch (MySqlException ex) { throw exceptionTranslator.Translate(ex, op); }
     }
 
+    private async Task<bool> ExecuteScalarBoolAsync(string sql, Action<MySqlCommand> addParameters, string op, CancellationToken ct)
+    {
+        try
+        {
+            await using var c = await connectionFactory.OpenAsync(ct);
+            await using var cmd = new MySqlCommand(sql, c);
+            addParameters(cmd);
+            return Convert.ToBoolean(await cmd.ExecuteScalarAsync(ct));
+        }
+        catch (MySqlException ex) { throw exceptionTranslator.Translate(ex, op); }
+    }
+
     private async Task<int> ExecuteNonQueryAsync(string sql, Action<MySqlCommand> addParameters, string op, CancellationToken ct)
     {
         try
@@ -625,6 +726,21 @@ public sealed class OperativaRepository(
         Eventos = r.GetNullableString("Eventos") ?? string.Empty
     };
 
+    private static EventoAdminDto MapEventoAsignable(MySqlDataReader r) => new()
+    {
+        IdEvento = r.GetUInt64Value("IDEvento"),
+        FechaHora = r.GetDateTimeValue("FechaHora"),
+        EstadoEvento = r.GetRequiredString("EstadoEvento"),
+        IdEstadio = r.GetUInt64Value("IDEstadio"),
+        Estadio = r.GetRequiredString("Estadio"),
+        PaisEstadio = r.GetRequiredString("PaisEstadio"),
+        IdEquipoLocal = GetNullableUInt64(r, "IDEquipoLocal"),
+        EquipoLocal = r.GetNullableString("EquipoLocal"),
+        IdEquipoVisitante = GetNullableUInt64(r, "IDEquipoVisitante"),
+        EquipoVisitante = r.GetNullableString("EquipoVisitante"),
+        EntradasEmitidas = Convert.ToInt32(r.GetValue(r.GetOrdinal("EntradasEmitidas")))
+    };
+
     private static EntradaResumenDto MapEntradaResumen(MySqlDataReader r) => new()
     {
         IdEntrada = r.GetUInt64Value("IDEntrada"),
@@ -671,8 +787,15 @@ public sealed class OperativaRepository(
         NumLegajo = r.GetRequiredString("NumLegajo"),
         IdEvento = r.GetUInt64Value("IDEvento"),
         FechaEvento = r.GetDateTimeValue("FechaEvento"),
+        EstadoEvento = r.GetRequiredString("EstadoEvento"),
         IdSector = r.GetUInt64Value("IDSector"),
         Sector = r.GetRequiredString("NombreSector"),
         Estadio = r.GetRequiredString("Estadio")
     };
+
+    private static ulong? GetNullableUInt64(MySqlDataReader reader, string name)
+    {
+        var ordinal = reader.GetOrdinal(name);
+        return reader.IsDBNull(ordinal) ? null : Convert.ToUInt64(reader.GetValue(ordinal));
+    }
 }

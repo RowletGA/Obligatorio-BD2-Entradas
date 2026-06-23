@@ -42,11 +42,15 @@ El catálogo está en `/Eventos`. Si no hay eventos visibles, cargar datos con e
 
 Como administrador, abrir `/Admin`, crear estadio, sectores y equipos. Luego ir a `/Admin/Eventos/Nuevo`, seleccionar estadio, equipos y sectores. Cada sector muestra su capacidad de solo lectura y pide “Precio por entrada”. La creación usa transacción y triggers de la base.
 
+Para editar eventos, abrir el detalle administrativo y usar `Editar evento`. La edición completa está disponible solo si no hay entradas emitidas. Con entradas o eventos cerrados, usar únicamente `Cambiar estado`.
+
 Comprar: iniciar sesión como usuario general, abrir un evento programado y seleccionar cantidades por sector.
 
 Transferir: abrir `/Entradas/MisEntradas`, ver detalle y usar el correo del receptor.
 
 Validar: iniciar sesión como funcionario asignado y abrir `/Funcionario/Validar`.
+
+Asignar funcionario: en `/Admin/Funcionarios`, elegir primero el evento. El selector de sector se carga con los sectores habilitados específicamente para ese evento. No se deben crear asignaciones sobre eventos finalizados o cancelados.
 
 ## Dónde está cada módulo
 
@@ -69,6 +73,7 @@ Crear DTOs/contratos en Application, reglas en servicios, SQL parametrizado en I
 - Usuario viejo no ingresa: `HashContrasena` está NULL.
 - Documento rechazado: revisar `CatalogosRegistro`.
 - Usuario con varios roles ve menú incorrecto: ir a `/Account/SeleccionarPerfil` y confirmar el perfil activo.
+- Sector duplicado en asignación: verificar que se esté usando el endpoint `SectoresPorEvento` y no sectores cargados globalmente.
 
 ## Reglas para commits
 

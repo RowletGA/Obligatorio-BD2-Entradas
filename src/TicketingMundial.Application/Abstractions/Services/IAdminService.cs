@@ -21,7 +21,10 @@ public interface IAdminService
     Task<EquipoAdminDto?> ObtenerEquipoAsync(ulong idEquipo, CancellationToken cancellationToken);
     Task<OperationResult<ulong>> GuardarEquipoAsync(EquipoUpsertCommand command, CancellationToken cancellationToken);
     Task<PagedResult<EventoAdminDto>> ListarEventosAsync(DocumentoUsuario adminDocumento, int page, int pageSize, CancellationToken cancellationToken);
+    Task<IReadOnlyList<EventoAdminDto>> ListarEventosAsignablesAsync(DocumentoUsuario adminDocumento, CancellationToken cancellationToken);
     Task<EventoAdminDto?> ObtenerEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, CancellationToken cancellationToken);
+    Task<IReadOnlyList<EventoSectorAdminDto>> ListarSectoresHabilitadosEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, CancellationToken cancellationToken);
     Task<OperationResult<ulong>> CrearEventoAsync(DocumentoUsuario adminDocumento, EventoCreateCommand command, CancellationToken cancellationToken);
+    Task<OperationResult> EditarEventoAsync(DocumentoUsuario adminDocumento, EventoUpdateCommand command, CancellationToken cancellationToken);
     Task<OperationResult> CambiarEstadoEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, string estado, CancellationToken cancellationToken);
 }

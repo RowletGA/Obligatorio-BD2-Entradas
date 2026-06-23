@@ -83,6 +83,8 @@ Administración:
 - Objetos DB: `Administrador`, `Estadio`, `Sector`, `Equipo`, `Evento`, `EventoLocal`, `EventoVisita`, `EventoSector`.
 - Transacción: sí, para creación de evento.
 - Jurisdicción: `PaisSede` leído desde `Administrador`.
+- Edición de eventos: completa solo sin entradas emitidas; con entradas o estados cerrados, solo cambio de estado.
+- Asignaciones: eventos `PROGRAMADO`/`EN_CURSO`; sectores cargados desde `EventoSector` filtrando por `IDEvento`.
 
 Perfiles y navegación:
 
@@ -95,6 +97,7 @@ Perfiles y navegación:
 
 - Máximo 5 entradas por venta: implementado en formulario y servicio; triggers son autoridad final.
 - Capacidad: debe validarse contra `EventoSector`, `Sector` y triggers.
+- `Sector.Capacidad` es propia del sector; `EventoSector.PrecioBase` es el precio por entrada para ese evento y sector.
 - Comisión y monto total: no sobrescribir manualmente montos calculados por triggers.
 - Equipos distintos y conflicto horario: validar en servicio y respetar triggers.
 - Propiedad actual: usar `V_PropietarioActual`.
@@ -130,7 +133,7 @@ Usar correos y documentos claramente artificiales. No borrar datos ajenos ni lim
 | Registro | Sí | - | - | `AccountController`, `UsuarioService`, `CatalogoRegistroService` | Catálogos configurables y teléfonos normalizados |
 | Login/logout | Sí | - | - | `AuthenticationService`, `UsuarioRepository` | Usuarios con hash NULL no ingresan |
 | Eventos lectura | Sí | - | - | `EventosController`, `EventoRepository` | Depende de datos visibles en DB |
-| Administración | Sí | Baja física no implementada | Edición avanzada de eventos | `AdminController`, `AdminService`, `AdminRepository` | Respeta país del administrador |
+| Administración | Sí | Baja física no implementada | Exportación/auditoría avanzada | `AdminController`, `AdminService`, `AdminRepository` | Respeta país del administrador y bloquea eventos con entradas |
 | Compra | Sí | Falta E2E real documentado | Medios de pago reales | `OperativaRepository` | No confía en precios del cliente |
 | Compras/entradas | Sí | - | - | `OperativaRepository` | Usa claims y `V_PropietarioActual` |
 | Transferencias | Sí | Falta E2E real documentado | Notificaciones | `OperativaRepository` | Triggers son autoridad final |

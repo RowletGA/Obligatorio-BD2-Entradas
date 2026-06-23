@@ -64,10 +64,69 @@ public sealed class OperativaServiceTests
         Assert.Equal(10, repository.UltimoLimiteReporte);
     }
 
+    [Fact]
+    public async Task AsignarFuncionarioAsync_RechazaEventoFinalizadoManipulado()
+    {
+        var repository = new FakeOperativaRepository { EventoAsignable = null };
+        var service = new OperativaService(repository);
+
+        var result = await service.AsignarFuncionarioAsync(Usuario, 7, 2, "UY", CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("no admite", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AsignarFuncionarioAsync_RechazaSectorNoHabilitado()
+    {
+        var repository = new FakeOperativaRepository { SectorHabilitado = false };
+        var service = new OperativaService(repository);
+
+        var result = await service.AsignarFuncionarioAsync(Usuario, 7, 99, "UY", CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("habilitado", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AsignarFuncionarioAsync_RechazaAsignacionDuplicada()
+    {
+        var repository = new FakeOperativaRepository { AsignacionDuplicada = true };
+        var service = new OperativaService(repository);
+
+        var result = await service.AsignarFuncionarioAsync(Usuario, 7, 2, "UY", CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("ya se encuentra asignado", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AsignarFuncionarioAsync_InsertaAsignacionValida()
+    {
+        var repository = new FakeOperativaRepository();
+        var service = new OperativaService(repository);
+
+        var result = await service.AsignarFuncionarioAsync(Usuario, 7, 2, "UY", CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.True(repository.AsignacionInsertada);
+    }
+
     private sealed class FakeOperativaRepository : IOperativaRepository
     {
         public IReadOnlyList<CompraSectorCantidad> UltimasCantidades { get; private set; } = [];
         public int UltimoLimiteReporte { get; private set; }
+        public EventoAdminDto? EventoAsignable { get; init; } = new()
+        {
+            IdEvento = 7,
+            EstadoEvento = "PROGRAMADO",
+            PaisEstadio = "UY",
+            IdEstadio = 1,
+            FechaHora = DateTime.Today.AddDays(2)
+        };
+        public bool SectorHabilitado { get; init; } = true;
+        public bool AsignacionDuplicada { get; init; }
+        public bool AsignacionInsertada { get; private set; }
 
         public Task<CompraResultadoDto> ComprarAsync(DocumentoUsuario comprador, ulong idEvento, IReadOnlyList<CompraSectorCantidad> cantidades, CancellationToken cancellationToken)
         {
@@ -93,7 +152,15 @@ public sealed class OperativaServiceTests
         public Task<bool> ResponderTransferenciaAsync(DocumentoUsuario usuario, ulong idTransferencia, string estado, bool receptor, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<FuncionarioDto>> ListarFuncionariosAsync(CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<AsignacionFuncionarioDto>> ListarAsignacionesAsync(string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task AsignarFuncionarioAsync(DocumentoUsuario funcionario, ulong idEvento, ulong idSector, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<bool> ExisteFuncionarioAsync(DocumentoUsuario funcionario, CancellationToken cancellationToken) => Task.FromResult(true);
+        public Task<EventoAdminDto?> ObtenerEventoAsignableAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken) => Task.FromResult(EventoAsignable);
+        public Task<bool> SectorHabilitadoParaEventoAsync(ulong idEvento, ulong idSector, string paisSede, CancellationToken cancellationToken) => Task.FromResult(SectorHabilitado);
+        public Task<bool> ExisteAsignacionFuncionarioAsync(DocumentoUsuario funcionario, ulong idEvento, ulong idSector, CancellationToken cancellationToken) => Task.FromResult(AsignacionDuplicada);
+        public Task AsignarFuncionarioAsync(DocumentoUsuario funcionario, ulong idEvento, ulong idSector, string paisSede, CancellationToken cancellationToken)
+        {
+            AsignacionInsertada = true;
+            return Task.CompletedTask;
+        }
         public Task<IReadOnlyList<AsignacionFuncionarioDto>> ListarAsignacionesFuncionarioAsync(DocumentoUsuario funcionario, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ValidacionEntradaDto> ValidarEntradaAsync(DocumentoUsuario funcionario, ulong idEntrada, string token, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<ReporteEventoVendidoDto>> ReporteEventosVendidosAsync(DateTime? desde, DateTime? hasta, int limite, CancellationToken cancellationToken) => throw new NotImplementedException();

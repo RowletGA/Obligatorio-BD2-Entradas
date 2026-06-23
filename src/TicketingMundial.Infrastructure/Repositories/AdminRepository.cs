@@ -346,10 +346,11 @@ public sealed class AdminRepository(
     public async Task<PagedResult<EventoAdminDto>> ListarEventosAsync(string paisSede, int page, int pageSize, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT IDEvento, FechaHora, EstadoEvento, IDEstadio, Estadio, PaisEstadio,
-                   IDEquipoLocal, EquipoLocal, IDEquipoVisitante, EquipoVisitante
-            FROM V_Eventos
-            WHERE PaisEstadio = @PaisSede
+            SELECT v.IDEvento, v.FechaHora, v.EstadoEvento, v.IDEstadio, v.Estadio, v.PaisEstadio,
+                   v.IDEquipoLocal, v.EquipoLocal, v.IDEquipoVisitante, v.EquipoVisitante,
+                   (SELECT COUNT(*) FROM Entrada en WHERE en.IDEvento = v.IDEvento) AS EntradasEmitidas
+            FROM V_Eventos v
+            WHERE v.PaisEstadio = @PaisSede
             ORDER BY FechaHora DESC
             LIMIT @Limit OFFSET @Offset;
             """;
@@ -358,13 +359,32 @@ public sealed class AdminRepository(
         return await QueryPagedAsync(sql, countSql, parameters, page, pageSize, MapEvento, "listar eventos administrativos", cancellationToken);
     }
 
+    public async Task<IReadOnlyList<EventoAdminDto>> ListarEventosAsignablesAsync(string paisSede, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT v.IDEvento, v.FechaHora, v.EstadoEvento, v.IDEstadio, v.Estadio, v.PaisEstadio,
+                   v.IDEquipoLocal, v.EquipoLocal, v.IDEquipoVisitante, v.EquipoVisitante,
+                   (SELECT COUNT(*) FROM Entrada en WHERE en.IDEvento = v.IDEvento) AS EntradasEmitidas
+            FROM V_Eventos v
+            WHERE v.PaisEstadio = @PaisSede
+              AND v.EstadoEvento IN ('PROGRAMADO', 'EN_CURSO')
+            ORDER BY v.FechaHora ASC;
+            """;
+        return await QueryListAsync(sql, command =>
+            command.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede,
+            MapEvento,
+            "listar eventos asignables",
+            cancellationToken);
+    }
+
     public async Task<EventoAdminDto?> ObtenerEventoAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT IDEvento, FechaHora, EstadoEvento, IDEstadio, Estadio, PaisEstadio,
-                   IDEquipoLocal, EquipoLocal, IDEquipoVisitante, EquipoVisitante
-            FROM V_Eventos
-            WHERE IDEvento = @IdEvento AND PaisEstadio = @PaisSede;
+            SELECT v.IDEvento, v.FechaHora, v.EstadoEvento, v.IDEstadio, v.Estadio, v.PaisEstadio,
+                   v.IDEquipoLocal, v.EquipoLocal, v.IDEquipoVisitante, v.EquipoVisitante,
+                   (SELECT COUNT(*) FROM Entrada en WHERE en.IDEvento = v.IDEvento) AS EntradasEmitidas
+            FROM V_Eventos v
+            WHERE v.IDEvento = @IdEvento AND v.PaisEstadio = @PaisSede;
             """;
         var evento = await QuerySingleAsync(sql, cmd =>
         {
@@ -389,8 +409,28 @@ public sealed class AdminRepository(
             EquipoLocal = evento.EquipoLocal,
             IdEquipoVisitante = evento.IdEquipoVisitante,
             EquipoVisitante = evento.EquipoVisitante,
-            Sectores = await ListarEventoSectoresAsync(idEvento, cancellationToken)
+            EntradasEmitidas = evento.EntradasEmitidas,
+            Sectores = await ListarSectoresHabilitadosEventoAsync(idEvento, paisSede, cancellationToken)
         };
+    }
+
+    public Task<IReadOnlyList<EventoSectorAdminDto>> ListarSectoresHabilitadosEventoAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT s.IDSector, s.NombreSector, s.Capacidad, es.PrecioBase
+            FROM EventoSector es
+            INNER JOIN Evento ev ON ev.IDEvento = es.IDEvento
+            INNER JOIN Estadio est ON est.IDEstadio = ev.IDEstadio
+            INNER JOIN Sector s ON s.IDSector = es.IDSector
+            WHERE es.IDEvento = @IdEvento
+              AND est.UbicacionPais = @PaisSede
+            ORDER BY s.NombreSector;
+            """;
+        return QueryListAsync(sql, command =>
+        {
+            command.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+            command.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede;
+        }, MapEventoSector, "listar sectores habilitados del evento", cancellationToken);
     }
 
     public async Task<ulong> CrearEventoAsync(EventoCreateCommand command, string paisSede, CancellationToken cancellationToken)
@@ -455,6 +495,129 @@ public sealed class AdminRepository(
         }
     }
 
+    public async Task<bool> ActualizarEventoCompletoAsync(EventoUpdateCommand command, string paisSede, CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            const string validateSql = """
+                SELECT COUNT(en.IDEntrada)
+                FROM Evento ev
+                INNER JOIN Estadio e ON e.IDEstadio = ev.IDEstadio
+                LEFT JOIN Entrada en ON en.IDEvento = ev.IDEvento
+                WHERE ev.IDEvento = @IdEvento
+                  AND e.UbicacionPais = @PaisSede
+                GROUP BY ev.IDEvento;
+                """;
+            int? entradas = null;
+            await using (var cmd = new MySqlCommand(validateSql, connection, transaction))
+            {
+                cmd.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = command.IdEvento;
+                cmd.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede;
+                var value = await cmd.ExecuteScalarAsync(cancellationToken);
+                if (value is not null && value != DBNull.Value)
+                {
+                    entradas = Convert.ToInt32(value);
+                }
+            }
+
+            if (!entradas.HasValue)
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+                return false;
+            }
+
+            if (entradas.Value > 0)
+            {
+                throw new DatabaseException(
+                    "Este evento ya tiene entradas emitidas. Para preservar la consistencia de las entradas, solamente puede modificarse su estado.",
+                    new InvalidOperationException("Intento de edición estructural con entradas emitidas."));
+            }
+
+            const string updateEvento = """
+                UPDATE Evento ev
+                INNER JOIN Estadio eActual ON eActual.IDEstadio = ev.IDEstadio
+                INNER JOIN Estadio eNuevo ON eNuevo.IDEstadio = @IdEstadio
+                SET ev.EstadoEvento = @Estado,
+                    ev.FechaHora = @FechaHora,
+                    ev.IDEstadio = @IdEstadio
+                WHERE ev.IDEvento = @IdEvento
+                  AND eActual.UbicacionPais = @PaisSede
+                  AND eNuevo.UbicacionPais = @PaisSede;
+                """;
+            await using (var cmd = new MySqlCommand(updateEvento, connection, transaction))
+            {
+                cmd.Parameters.Add("@Estado", MySqlDbType.VarChar, 20).Value = command.EstadoEvento;
+                cmd.Parameters.Add("@FechaHora", MySqlDbType.DateTime).Value = command.Fecha.ToDateTime(command.Hora);
+                cmd.Parameters.Add("@IdEstadio", MySqlDbType.UInt64).Value = command.IdEstadio;
+                cmd.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = command.IdEvento;
+                cmd.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede;
+                if (await cmd.ExecuteNonQueryAsync(cancellationToken) != 1)
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                    return false;
+                }
+            }
+
+            await ExecuteInTransactionAsync(connection, transaction, "DELETE FROM EventoLocal WHERE IDEvento = @IdEvento;", command.IdEvento, cancellationToken);
+            await ExecuteInTransactionAsync(connection, transaction, "DELETE FROM EventoVisita WHERE IDEvento = @IdEvento;", command.IdEvento, cancellationToken);
+            await InsertEventoEquipoAsync(connection, transaction, "EventoLocal", command.IdEvento, command.IdEquipoLocal, cancellationToken);
+            await InsertEventoEquipoAsync(connection, transaction, "EventoVisita", command.IdEvento, command.IdEquipoVisitante, cancellationToken);
+
+            var nuevosSectores = command.Sectores.Select(sector => sector.IdSector).ToArray();
+            await using (var deleteCmd = new MySqlCommand("""
+                DELETE FROM EventoSector
+                WHERE IDEvento = @IdEvento
+                  AND IDSector NOT IN (
+                      SELECT IDSector FROM (
+                          SELECT @Keep0 AS IDSector
+                      ) keep0
+                  );
+                """, connection, transaction))
+            {
+                deleteCmd.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = command.IdEvento;
+                deleteCmd.Parameters.Add("@Keep0", MySqlDbType.UInt64).Value = 0;
+                if (nuevosSectores.Length > 0)
+                {
+                    deleteCmd.CommandText = $"DELETE FROM EventoSector WHERE IDEvento = @IdEvento AND IDSector NOT IN ({string.Join(", ", nuevosSectores.Select((_, i) => $"@Sector{i}"))});";
+                    for (var i = 0; i < nuevosSectores.Length; i++)
+                    {
+                        deleteCmd.Parameters.Add($"@Sector{i}", MySqlDbType.UInt64).Value = nuevosSectores[i];
+                    }
+                }
+                await deleteCmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            foreach (var sector in command.Sectores)
+            {
+                const string upsertSector = """
+                    INSERT INTO EventoSector (IDEvento, IDSector, PrecioBase)
+                    VALUES (@IdEvento, @IdSector, @PrecioBase)
+                    ON DUPLICATE KEY UPDATE PrecioBase = VALUES(PrecioBase);
+                    """;
+                await using var cmd = new MySqlCommand(upsertSector, connection, transaction);
+                cmd.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = command.IdEvento;
+                cmd.Parameters.Add("@IdSector", MySqlDbType.UInt64).Value = sector.IdSector;
+                cmd.Parameters.Add("@PrecioBase", MySqlDbType.Decimal).Value = sector.PrecioBase;
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch (DatabaseException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+        catch (MySqlException ex)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw exceptionTranslator.Translate(ex, "editar evento");
+        }
+    }
+
     public async Task<bool> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken)
     {
         const string sql = """
@@ -506,6 +669,28 @@ public sealed class AdminRepository(
             addParameters(command);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             return await reader.ReadAsync(cancellationToken) ? map(reader) : default;
+        }
+        catch (MySqlException ex)
+        {
+            throw exceptionTranslator.Translate(ex, operation);
+        }
+    }
+
+    private async Task<IReadOnlyList<T>> QueryListAsync<T>(string sql, Action<MySqlCommand> addParameters, Func<MySqlDataReader, T> map, string operation, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+            await using var command = new MySqlCommand(sql, connection);
+            addParameters(command);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            var items = new List<T>();
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                items.Add(map(reader));
+            }
+
+            return items;
         }
         catch (MySqlException ex)
         {
@@ -576,13 +761,21 @@ public sealed class AdminRepository(
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    private static async Task ExecuteInTransactionAsync(MySqlConnection connection, MySqlTransaction transaction, string sql, ulong idEvento, CancellationToken cancellationToken)
+    {
+        await using var command = new MySqlCommand(sql, connection, transaction);
+        command.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private async Task<IReadOnlyList<EventoAdminDto>> ListarProximosEventosAsync(MySqlConnection connection, string paisSede, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT IDEvento, FechaHora, EstadoEvento, IDEstadio, Estadio, PaisEstadio,
-                   IDEquipoLocal, EquipoLocal, IDEquipoVisitante, EquipoVisitante
-            FROM V_Eventos
-            WHERE PaisEstadio = @PaisSede AND FechaHora >= CURRENT_TIMESTAMP
+            SELECT v.IDEvento, v.FechaHora, v.EstadoEvento, v.IDEstadio, v.Estadio, v.PaisEstadio,
+                   v.IDEquipoLocal, v.EquipoLocal, v.IDEquipoVisitante, v.EquipoVisitante,
+                   (SELECT COUNT(*) FROM Entrada en WHERE en.IDEvento = v.IDEvento) AS EntradasEmitidas
+            FROM V_Eventos v
+            WHERE v.PaisEstadio = @PaisSede AND v.FechaHora >= CURRENT_TIMESTAMP
             ORDER BY FechaHora
             LIMIT 5;
             """;
@@ -610,39 +803,6 @@ public sealed class AdminRepository(
         await using var command = new MySqlCommand(sql, connection);
         command.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede;
         return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
-    }
-
-    private async Task<IReadOnlyList<EventoSectorAdminDto>> ListarEventoSectoresAsync(ulong idEvento, CancellationToken cancellationToken)
-    {
-        const string sql = """
-            SELECT es.IDSector, s.NombreSector, es.PrecioBase
-            FROM EventoSector es
-            INNER JOIN Sector s ON s.IDSector = es.IDSector
-            WHERE es.IDEvento = @IdEvento
-            ORDER BY s.NombreSector;
-            """;
-        try
-        {
-            await using var connection = await connectionFactory.OpenAsync(cancellationToken);
-            await using var command = new MySqlCommand(sql, connection);
-            command.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            var sectores = new List<EventoSectorAdminDto>();
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                sectores.Add(new EventoSectorAdminDto
-                {
-                    IdSector = reader.GetUInt64Value("IDSector"),
-                    NombreSector = reader.GetRequiredString("NombreSector"),
-                    PrecioBase = reader.GetDecimalValue("PrecioBase")
-                });
-            }
-            return sectores;
-        }
-        catch (MySqlException ex)
-        {
-            throw exceptionTranslator.Translate(ex, "listar sectores de evento");
-        }
     }
 
     private static EstadioAdminDto MapEstadio(MySqlDataReader reader) => new()
@@ -685,7 +845,16 @@ public sealed class AdminRepository(
         IdEquipoLocal = GetNullableUInt64(reader, "IDEquipoLocal"),
         EquipoLocal = reader.GetNullableString("EquipoLocal"),
         IdEquipoVisitante = GetNullableUInt64(reader, "IDEquipoVisitante"),
-        EquipoVisitante = reader.GetNullableString("EquipoVisitante")
+        EquipoVisitante = reader.GetNullableString("EquipoVisitante"),
+        EntradasEmitidas = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("EntradasEmitidas")))
+    };
+
+    private static EventoSectorAdminDto MapEventoSector(MySqlDataReader reader) => new()
+    {
+        IdSector = reader.GetUInt64Value("IDSector"),
+        NombreSector = reader.GetRequiredString("NombreSector"),
+        Capacidad = reader.GetUInt32Value("Capacidad"),
+        PrecioBase = reader.GetDecimalValue("PrecioBase")
     };
 
     private static ulong? GetNullableUInt64(MySqlDataReader reader, string name)

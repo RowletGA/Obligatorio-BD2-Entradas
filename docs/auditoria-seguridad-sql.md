@@ -38,3 +38,5 @@ Revision estatica de repositorios y acceso a base. No se detecto uso de ORM, Dap
 - Los valores maliciosos probados se tratan como texto y se entregan a repositorios/servicios como parametros, no como fragmentos SQL.
 - El cambio de perfil activo no consulta SQL ni otorga permisos: valida el perfil solicitado contra roles reales de la cookie y conserva los `[Authorize(Roles = "...")]`.
 - El formulario de evento no confía en capacidad enviada por el navegador; los sectores válidos se vuelven a consultar por estadio y jurisdicción antes de insertar `EventoSector`.
+- La edición completa de evento revalida jurisdicción, entradas emitidas, equipos y sectores en servidor. La sincronización de `EventoSector` se ejecuta en transacción y no usa valores de capacidad del cliente.
+- La asignación de funcionarios valida evento asignable, sector habilitado en `EventoSector`, jurisdicción y duplicado antes del insert. Las consultas usan parámetros tipados y no `AddWithValue`.

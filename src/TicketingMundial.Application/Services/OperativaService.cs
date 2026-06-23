@@ -2,6 +2,7 @@ using TicketingMundial.Application.Abstractions.Repositories;
 using TicketingMundial.Application.Abstractions.Services;
 using TicketingMundial.Application.DTOs;
 using TicketingMundial.Domain.Common;
+using TicketingMundial.Domain.Estados;
 using TicketingMundial.Domain.Identity;
 
 namespace TicketingMundial.Application.Services;
@@ -87,7 +88,35 @@ public sealed class OperativaService(IOperativaRepository repository) : IOperati
             return OperationResult.Failure("Debe seleccionar evento y sector.");
         }
 
-        await repository.AsignarFuncionarioAsync(NormalizeDocumento(funcionario), idEvento, idSector, paisSede.Trim().ToUpperInvariant(), cancellationToken);
+        var documento = NormalizeDocumento(funcionario);
+        var pais = paisSede.Trim().ToUpperInvariant();
+        if (!await repository.ExisteFuncionarioAsync(documento, cancellationToken))
+        {
+            return OperationResult.Failure("Funcionario inválido.");
+        }
+
+        var evento = await repository.ObtenerEventoAsignableAsync(idEvento, pais, cancellationToken);
+        if (evento is null)
+        {
+            return OperationResult.Failure("El evento no existe, está fuera de jurisdicción o no admite nuevas asignaciones.");
+        }
+
+        if (evento.EstadoEvento is EstadoEvento.Finalizado or EstadoEvento.Cancelado)
+        {
+            return OperationResult.Failure("No se pueden asignar funcionarios a eventos finalizados o cancelados.");
+        }
+
+        if (!await repository.SectorHabilitadoParaEventoAsync(idEvento, idSector, pais, cancellationToken))
+        {
+            return OperationResult.Failure("El sector seleccionado no está habilitado para ese evento.");
+        }
+
+        if (await repository.ExisteAsignacionFuncionarioAsync(documento, idEvento, idSector, cancellationToken))
+        {
+            return OperationResult.Failure("El funcionario ya se encuentra asignado a ese evento y sector.");
+        }
+
+        await repository.AsignarFuncionarioAsync(documento, idEvento, idSector, pais, cancellationToken);
         return OperationResult.Ok("Funcionario asignado correctamente.");
     }
 

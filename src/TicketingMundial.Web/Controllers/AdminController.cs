@@ -237,6 +237,70 @@ public sealed class AdminController(
         return evento is null ? NotFound() : View(evento);
     }
 
+    [HttpGet("Eventos/{id:long}/Editar")]
+    public async Task<IActionResult> EditarEvento(ulong id, ulong? idEstadio, CancellationToken cancellationToken)
+    {
+        var evento = await adminService.ObtenerEventoAsync(GetDocumento(), id, cancellationToken);
+        if (evento is null)
+        {
+            return NotFound();
+        }
+
+        var model = CreateEventoForm(evento);
+        if (idEstadio.HasValue && !model.EdicionBloqueada)
+        {
+            model.IdEstadio = idEstadio.Value;
+            model.Sectores = [];
+        }
+
+        return View("EventoForm", await PrepareEventoFormAsync(model, cancellationToken));
+    }
+
+    [HttpPost("Eventos/{id:long}/Editar")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditarEvento(ulong id, EventoCreateViewModel model, CancellationToken cancellationToken)
+    {
+        model.IdEvento = id;
+        ValidateEventoSectores(model);
+        if (!ModelState.IsValid)
+        {
+            return View("EventoForm", await PrepareEventoFormAsync(model, cancellationToken));
+        }
+
+        var command = new EventoUpdateCommand
+        {
+            IdEvento = id,
+            Fecha = model.Fecha,
+            Hora = model.Hora,
+            IdEstadio = model.IdEstadio,
+            IdEquipoLocal = model.IdEquipoLocal,
+            IdEquipoVisitante = model.IdEquipoVisitante,
+            EstadoEvento = model.EstadoEvento,
+            Sectores = model.Sectores
+                .Where(sector => sector.Seleccionado)
+                .Select(sector => new EventoSectorCreateCommand { IdSector = sector.IdSector, PrecioBase = sector.PrecioBase!.Value })
+                .ToArray()
+        };
+
+        try
+        {
+            var result = await adminService.EditarEventoAsync(GetDocumento(), command, cancellationToken);
+            if (!result.Success)
+            {
+                ModelState.AddModelError(string.Empty, result.Message ?? "No fue posible actualizar el evento.");
+                return View("EventoForm", await PrepareEventoFormAsync(model, cancellationToken));
+            }
+
+            TempData["Success"] = result.Message;
+            return RedirectToAction(nameof(EventoDetalle), new { id });
+        }
+        catch (DatabaseException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.UserMessage);
+            return View("EventoForm", await PrepareEventoFormAsync(model, cancellationToken));
+        }
+    }
+
     [HttpPost("Eventos/{id:long}/Estado")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CambiarEstadoEvento(ulong id, EventoEstadoViewModel model, CancellationToken cancellationToken)
@@ -252,6 +316,18 @@ public sealed class AdminController(
         var admin = await adminService.ObtenerAdministradorAsync(GetDocumento(), cancellationToken);
         ViewBag.Asignaciones = await operativaService.ListarAsignacionesAsync(admin?.PaisSede ?? string.Empty, cancellationToken);
         return View(await PrepareAsignarFuncionarioAsync(new AsignarFuncionarioViewModel(), cancellationToken));
+    }
+
+    [HttpGet("Funcionarios/SectoresPorEvento")]
+    public async Task<IActionResult> SectoresPorEvento(ulong idEvento, CancellationToken cancellationToken)
+    {
+        var sectores = await adminService.ListarSectoresHabilitadosEventoAsync(GetDocumento(), idEvento, cancellationToken);
+        return Json(sectores.Select(sector => new
+        {
+            idSector = sector.IdSector,
+            nombre = sector.NombreSector,
+            capacidad = sector.Capacidad
+        }));
     }
 
     [HttpPost("Funcionarios/Asignar")]
@@ -415,25 +491,46 @@ public sealed class AdminController(
         model.Funcionarios = (await operativaService.ListarFuncionariosAsync(cancellationToken))
             .Select(f => new SelectListItem($"{f.Nombre} · {f.NumLegajo}", $"{f.Documento.TipoDocumento}|{f.Documento.PaisDocumento}|{f.Documento.NumeroDocumento}"))
             .ToArray();
-        model.Eventos = (await adminService.ListarEventosAsync(GetDocumento(), 1, 100, cancellationToken)).Items
-            .Select(e => new SelectListItem($"{e.IdEvento} · {e.FechaHora:g} · {e.Estadio}", e.IdEvento.ToString()))
+        model.Eventos = (await adminService.ListarEventosAsignablesAsync(GetDocumento(), cancellationToken))
+            .Select(e => new SelectListItem($"{e.FechaHora:dd/MM/yyyy HH:mm} · {e.EquipoLocal} vs {e.EquipoVisitante} · {e.Estadio} · {e.EstadoEvento}", e.IdEvento.ToString()))
             .ToArray();
-        var eventos = await adminService.ListarEventosAsync(GetDocumento(), 1, 100, cancellationToken);
-        var sectores = new List<SelectListItem>();
-        foreach (var eventoResumen in eventos.Items)
-        {
-            var evento = await adminService.ObtenerEventoAsync(GetDocumento(), eventoResumen.IdEvento, cancellationToken);
-            if (evento is null)
-            {
-                continue;
-            }
-
-            sectores.AddRange(evento.Sectores.Select(s => new SelectListItem(
-                $"{evento.IdEvento} · {evento.Estadio} · {s.NombreSector}",
-                s.IdSector.ToString())));
-        }
-        model.Sectores = sectores;
+        model.Sectores = model.IdEvento > 0
+            ? (await adminService.ListarSectoresHabilitadosEventoAsync(GetDocumento(), model.IdEvento, cancellationToken))
+                .Select(s => new SelectListItem($"{s.NombreSector} · Capacidad {s.Capacidad}", s.IdSector.ToString()))
+                .ToArray()
+            : [];
         return model;
+    }
+
+    private static EventoCreateViewModel CreateEventoForm(EventoAdminDto evento)
+    {
+        var bloqueado = evento.EntradasEmitidas > 0 ||
+            evento.EstadoEvento is EstadoEvento.Finalizado or EstadoEvento.Cancelado;
+        return new EventoCreateViewModel
+        {
+            IdEvento = evento.IdEvento,
+            Fecha = DateOnly.FromDateTime(evento.FechaHora),
+            Hora = TimeOnly.FromDateTime(evento.FechaHora),
+            IdEstadio = evento.IdEstadio,
+            IdEquipoLocal = evento.IdEquipoLocal ?? 0,
+            IdEquipoVisitante = evento.IdEquipoVisitante ?? 0,
+            EstadoEvento = evento.EstadoEvento,
+            EntradasEmitidas = evento.EntradasEmitidas,
+            EdicionBloqueada = bloqueado,
+            AdvertenciaEdicion = evento.EntradasEmitidas > 0
+                ? "Este evento ya tiene entradas emitidas. Para preservar la consistencia de las entradas, solamente puede modificarse su estado."
+                : bloqueado
+                    ? "Los eventos finalizados o cancelados no permiten edición estructural."
+                    : null,
+            Sectores = evento.Sectores.Select(sector => new EventoSectorFormViewModel
+            {
+                IdSector = sector.IdSector,
+                NombreSector = sector.NombreSector,
+                Capacidad = sector.Capacidad,
+                Seleccionado = true,
+                PrecioBase = sector.PrecioBase
+            }).ToList()
+        };
     }
 
     private async Task<IReadOnlyList<SelectListItem>> GetEstadiosOptionsAsync(CancellationToken cancellationToken)
