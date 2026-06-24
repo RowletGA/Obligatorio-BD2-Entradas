@@ -3,6 +3,7 @@ using MySqlConnector;
 using TicketingMundial.Application.Abstractions.Repositories;
 using TicketingMundial.Application.DTOs;
 using TicketingMundial.Application.Security;
+using TicketingMundial.Domain.Estados;
 using TicketingMundial.Domain.Identity;
 using TicketingMundial.Infrastructure.Data;
 using TicketingMundial.Infrastructure.Errors;
@@ -618,21 +619,127 @@ public sealed class AdminRepository(
         }
     }
 
-    public async Task<bool> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken)
+    public async Task<EventoCambioEstadoResultadoDto?> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken)
     {
-        const string sql = """
-            UPDATE Evento ev
-            INNER JOIN Estadio e ON e.IDEstadio = ev.IDEstadio
-            SET ev.EstadoEvento = @Estado
-            WHERE ev.IDEvento = @IdEvento
-              AND e.UbicacionPais = @PaisSede;
-            """;
-        return await ExecuteNonQueryAsync(sql, cmd =>
+        await using var connection = await connectionFactory.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
         {
-            cmd.Parameters.Add("@Estado", MySqlDbType.VarChar, 20).Value = estado;
-            cmd.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
-            cmd.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede;
-        }, "cambiar estado de evento", cancellationToken) > 0;
+            var estadoAnterior = await ObtenerEstadoEventoParaActualizarAsync(connection, transaction, idEvento, paisSede, cancellationToken);
+            if (estadoAnterior is null)
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+                return null;
+            }
+
+            var rechazo = EstadoEventoTransitions.ObtenerMotivoRechazo(estadoAnterior, estado);
+            if (rechazo is not null)
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+                return null;
+            }
+
+            var entradasValidadas = await ContarEntradasAsync(connection, transaction, idEvento, EstadoEntrada.Validada, cancellationToken);
+
+            await using (var updateEvento = new MySqlCommand("""
+                UPDATE Evento
+                SET EstadoEvento = @Estado
+                WHERE IDEvento = @IdEvento;
+                """, connection, transaction))
+            {
+                updateEvento.Parameters.Add("@Estado", MySqlDbType.VarChar, 20).Value = estado;
+                updateEvento.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+                await updateEvento.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            var entradasAnuladas = 0;
+            var transferenciasCanceladas = 0;
+            if (EstadoEventoTransitions.EsCerrado(estado))
+            {
+                await using (var updateEntradas = new MySqlCommand("""
+                    UPDATE Entrada
+                    SET EstadoEntrada = @Anulada
+                    WHERE IDEvento = @IdEvento
+                      AND EstadoEntrada IN (@Activa, @Transferida);
+                    """, connection, transaction))
+                {
+                    updateEntradas.Parameters.Add("@Anulada", MySqlDbType.VarChar, 20).Value = EstadoEntrada.Anulada;
+                    updateEntradas.Parameters.Add("@Activa", MySqlDbType.VarChar, 20).Value = EstadoEntrada.Activa;
+                    updateEntradas.Parameters.Add("@Transferida", MySqlDbType.VarChar, 20).Value = EstadoEntrada.Transferida;
+                    updateEntradas.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+                    entradasAnuladas = await updateEntradas.ExecuteNonQueryAsync(cancellationToken);
+                }
+
+                await using (var updateTransferencias = new MySqlCommand("""
+                    UPDATE Transferencia t
+                    INNER JOIN Entrada en ON en.IDEntrada = t.IDEntrada
+                    SET t.Estado = @Cancelada,
+                        t.FechaRespuesta = CURRENT_TIMESTAMP
+                    WHERE en.IDEvento = @IdEvento
+                      AND t.Estado = @Pendiente;
+                    """, connection, transaction))
+                {
+                    updateTransferencias.Parameters.Add("@Cancelada", MySqlDbType.VarChar, 20).Value = EstadoTransferencia.Cancelada;
+                    updateTransferencias.Parameters.Add("@Pendiente", MySqlDbType.VarChar, 20).Value = EstadoTransferencia.Pendiente;
+                    updateTransferencias.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+                    transferenciasCanceladas = await updateTransferencias.ExecuteNonQueryAsync(cancellationToken);
+                }
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return new EventoCambioEstadoResultadoDto
+            {
+                EstadoAnterior = estadoAnterior,
+                EstadoNuevo = estado,
+                EntradasValidadas = entradasValidadas,
+                EntradasAnuladas = entradasAnuladas,
+                TransferenciasPendientesCanceladas = transferenciasCanceladas
+            };
+        }
+        catch (MySqlException ex)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw exceptionTranslator.Translate(ex, "cambiar estado de evento");
+        }
+    }
+
+    private static async Task<string?> ObtenerEstadoEventoParaActualizarAsync(
+        MySqlConnection connection,
+        MySqlTransaction transaction,
+        ulong idEvento,
+        string paisSede,
+        CancellationToken cancellationToken)
+    {
+        await using var command = new MySqlCommand("""
+            SELECT ev.EstadoEvento
+            FROM Evento ev
+            INNER JOIN Estadio est ON est.IDEstadio = ev.IDEstadio
+            WHERE ev.IDEvento = @IdEvento
+              AND est.UbicacionPais = @PaisSede
+            FOR UPDATE;
+            """, connection, transaction);
+        command.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+        command.Parameters.Add("@PaisSede", MySqlDbType.VarChar, 50).Value = paisSede;
+        return Convert.ToString(await command.ExecuteScalarAsync(cancellationToken));
+    }
+
+    private static async Task<int> ContarEntradasAsync(
+        MySqlConnection connection,
+        MySqlTransaction transaction,
+        ulong idEvento,
+        string estado,
+        CancellationToken cancellationToken)
+    {
+        await using var command = new MySqlCommand("""
+            SELECT COUNT(*)
+            FROM Entrada
+            WHERE IDEvento = @IdEvento
+              AND EstadoEntrada = @Estado;
+            """, connection, transaction);
+        command.Parameters.Add("@IdEvento", MySqlDbType.UInt64).Value = idEvento;
+        command.Parameters.Add("@Estado", MySqlDbType.VarChar, 20).Value = estado;
+        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
     }
 
     private async Task<PagedResult<T>> QueryPagedAsync<T>(string sql, string countSql, List<MySqlParameter> parameters, int page, int pageSize, Func<MySqlDataReader, T> map, string operation, CancellationToken cancellationToken)

@@ -272,6 +272,11 @@ public sealed class AdminServiceTests
         public Task<bool> ActualizarEquipoAsync(EquipoUpsertCommand command, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<PagedResult<EventoAdminDto>> ListarEventosAsync(string paisSede, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ulong> CrearEventoAsync(EventoCreateCommand command, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<bool> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<EventoCambioEstadoResultadoDto?> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken) =>
+            Task.FromResult<EventoCambioEstadoResultadoDto?>(new EventoCambioEstadoResultadoDto
+            {
+                EstadoAnterior = EstadoEvento,
+                EstadoNuevo = estado
+            });
     }
 }

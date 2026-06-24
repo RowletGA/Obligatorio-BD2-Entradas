@@ -55,6 +55,61 @@ public sealed class OperativaServiceTests
     }
 
     [Fact]
+    public async Task GenerarQrEntradaAsync_PermiteEntradaActiva()
+    {
+        var service = new OperativaService(new FakeOperativaRepository(), new FakeQrTokenService());
+
+        var result = await service.GenerarQrEntradaAsync(Usuario, 10, null, CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("token-demo", result.Value?.Token);
+    }
+
+    [Fact]
+    public async Task GenerarQrEntradaAsync_RechazaEntradaValidada()
+    {
+        var repository = new FakeOperativaRepository
+        {
+            EntradaQr = new EntradaQrDto
+            {
+                IdEntrada = 10,
+                IdEvento = 7,
+                EstadoEntrada = "VALIDADA",
+                EstadoEvento = "PROGRAMADO",
+                PropietarioActual = Usuario
+            }
+        };
+        var service = new OperativaService(repository, new FakeQrTokenService());
+
+        var result = await service.GenerarQrEntradaAsync(Usuario, 10, null, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("validada", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GenerarQrEntradaAsync_RechazaEventoCancelado()
+    {
+        var repository = new FakeOperativaRepository
+        {
+            EntradaQr = new EntradaQrDto
+            {
+                IdEntrada = 10,
+                IdEvento = 7,
+                EstadoEntrada = "ACTIVA",
+                EstadoEvento = "CANCELADO",
+                PropietarioActual = Usuario
+            }
+        };
+        var service = new OperativaService(repository, new FakeQrTokenService());
+
+        var result = await service.GenerarQrEntradaAsync(Usuario, 10, null, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("cancelado", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Reportes_ClampLimite()
     {
         var repository = new FakeOperativaRepository();
@@ -128,6 +183,14 @@ public sealed class OperativaServiceTests
         public bool SectorHabilitado { get; init; } = true;
         public bool AsignacionDuplicada { get; init; }
         public bool AsignacionInsertada { get; private set; }
+        public EntradaQrDto? EntradaQr { get; init; } = new()
+        {
+            IdEntrada = 10,
+            IdEvento = 7,
+            EstadoEntrada = "ACTIVA",
+            EstadoEvento = "PROGRAMADO",
+            PropietarioActual = Usuario
+        };
 
         public Task<CompraResultadoDto> ComprarAsync(DocumentoUsuario comprador, ulong idEvento, IReadOnlyList<CompraSectorCantidad> cantidades, CancellationToken cancellationToken)
         {
@@ -146,7 +209,7 @@ public sealed class OperativaServiceTests
         public Task<CompraDetalleDto?> ObtenerCompraAsync(DocumentoUsuario comprador, ulong idVenta, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<EntradaResumenDto>> ListarEntradasPropiasAsync(DocumentoUsuario propietario, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<EntradaResumenDto?> ObtenerEntradaPropiaAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<EntradaQrDto?> ObtenerEntradaQrAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<EntradaQrDto?> ObtenerEntradaQrAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) => Task.FromResult(EntradaQr);
         public Task<UsuarioDestinoDto?> BuscarUsuarioGeneralPorCorreoAsync(string correo, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ulong> CrearTransferenciaAsync(DocumentoUsuario otorga, ulong idEntrada, string correoDestino, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<TransferenciaDto>> ListarTransferenciasEnviadasAsync(DocumentoUsuario usuario, CancellationToken cancellationToken) => throw new NotImplementedException();
@@ -166,13 +229,15 @@ public sealed class OperativaServiceTests
         public Task<IReadOnlyList<AsignacionFuncionarioDto>> ListarAsignacionesFuncionarioAsync(DocumentoUsuario funcionario, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ValidacionEntradaDto> ValidarEntradaQrAsync(DocumentoUsuario funcionario, string token, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<ReporteEventoVendidoDto>> ReporteEventosVendidosAsync(DateTime? desde, DateTime? hasta, int limite, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<IReadOnlyList<ReporteValidacionesFuncionarioDto>> ReporteValidacionesPorFuncionarioAsync(ulong? idEvento, string? funcionario, DateTime? desde, DateTime? hasta, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<ReporteValidacionesFuncionarioDto>>([]);
+        public Task<IReadOnlyList<ReporteTransferidorDto>> ReporteTransferidoresAsync(DateTime? desde, DateTime? hasta, int limite, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<ReporteTransferidorDto>>([]);
     }
 
     private sealed class FakeQrTokenService : IQrTokenService
     {
         public int MaxTokenLength => 255;
-        public QrTokenGenerado Generar(QrTokenContext contexto) => new();
-        public QrGenerationGrant GenerarPermisoGeneracion(QrTokenContext contexto, TimeSpan lifetime) => new();
+        public QrTokenGenerado Generar(QrTokenContext contexto) => new() { Token = "token-demo", VenceUtc = DateTimeOffset.UtcNow.AddSeconds(30), SegundosRestantes = 30 };
+        public QrGenerationGrant GenerarPermisoGeneracion(QrTokenContext contexto, TimeSpan lifetime) => new() { Grant = "grant-demo", VenceUtc = DateTimeOffset.UtcNow.AddMinutes(5) };
         public ResultadoValidacionQr LeerPayload(string token) => ResultadoValidacionQr.Valido(new QrTokenPayload { IdEntrada = 1, IdEvento = 1 });
         public ResultadoValidacionQr Validar(string token, QrTokenValidationContext contexto) => ResultadoValidacionQr.Valido(new QrTokenPayload { IdEntrada = contexto.IdEntrada, IdEvento = contexto.IdEvento });
         public ResultadoValidacionPermisoQr ValidarPermisoGeneracion(string grant, DocumentoUsuario propietario) => ResultadoValidacionPermisoQr.Rechazado("No usado.");

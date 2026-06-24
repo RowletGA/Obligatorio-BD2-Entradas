@@ -6,12 +6,20 @@
         <div><label asp-for="Desde" class="form-label"></label><input asp-for="Desde" class="form-control" type="date" /></div>
         <div><label asp-for="Hasta" class="form-label"></label><input asp-for="Hasta" class="form-control" type="date" /></div>
         <div><label asp-for="Limite" class="form-label"></label><input asp-for="Limite" class="form-control" type="number" min="1" max="100" /></div>
+        <div><label asp-for="IdEvento" class="form-label">Evento</label><input asp-for="IdEvento" class="form-control" type="number" min="1" /></div>
+        <div><label asp-for="Funcionario" class="form-label"></label><input asp-for="Funcionario" class="form-control" /></div>
     </div>
     <button class="btn btn-primary mt-3">Aplicar</button>
 </form>
 <section class="content-panel mb-3"><h2 class="h5">Eventos con más entradas vendidas</h2>
 @if (Model.Eventos.Count == 0) { <p class="text-secondary mb-0">Sin datos.</p> } else { <div class="table-responsive"><table class="table"><thead><tr><th>Evento</th><th>Fecha</th><th>Estadio</th><th>Vendidas</th></tr></thead><tbody>@foreach (var e in Model.Eventos) { <tr><td>@e.Evento</td><td>@e.FechaHora.ToString("g")</td><td>@e.Estadio</td><td>@e.EntradasVendidas</td></tr> }</tbody></table></div> }
 </section>
-<section class="content-panel"><h2 class="h5">Mayores compradores</h2>
+<section class="content-panel mb-3"><h2 class="h5">Mayores compradores</h2>
 @if (Model.Compradores.Count == 0) { <p class="text-secondary mb-0">Sin datos.</p> } else { <div class="table-responsive"><table class="table"><thead><tr><th>Comprador</th><th>Correo</th><th>Entradas</th><th>Total</th></tr></thead><tbody>@foreach (var c in Model.Compradores) { <tr><td>@c.Comprador</td><td>@c.Correo</td><td>@c.EntradasCompradas</td><td>@MoneyFormatter.Format(c.TotalGastado)</td></tr> }</tbody></table></div> }
+</section>
+<section class="content-panel mb-3"><h2 class="h5">Validaciones por funcionario</h2>
+@if (Model.ValidacionesPorFuncionario.Count == 0) { <p class="text-secondary mb-0">Sin datos.</p> } else { <div class="table-responsive"><table class="table"><thead><tr><th>Funcionario</th><th>Legajo</th><th>Evento</th><th>Estadio</th><th>Sector</th><th>Validaciones</th></tr></thead><tbody>@foreach (var v in Model.ValidacionesPorFuncionario) { <tr><td>@v.Funcionario</td><td>@v.NumLegajo</td><td>@v.Evento</td><td>@v.Estadio</td><td>@v.Sector</td><td>@v.EntradasValidadas</td></tr> }</tbody></table></div> }
+</section>
+<section class="content-panel"><h2 class="h5">Usuarios con más transferencias</h2>
+@if (Model.Transferidores.Count == 0) { <p class="text-secondary mb-0">Sin datos.</p> } else { <div class="table-responsive"><table class="table"><thead><tr><th>Usuario</th><th>Correo</th><th>Aceptadas</th><th>Solicitadas</th></tr></thead><tbody>@foreach (var t in Model.Transferidores) { <tr><td>@t.Usuario</td><td>@t.Correo</td><td>@t.TransferenciasAceptadas</td><td>@t.TransferenciasSolicitadas</td></tr> }</tbody></table></div> }
 </section>

@@ -25,7 +25,8 @@ La solución es ASP.NET Core MVC con MySqlConnector y SQL parametrizado. No usa 
 - Compra: el navegador no envía precio confiable; el servidor recarga disponibilidad y precio.
 - Triggers: se respetan y sus errores funcionales se traducen para el usuario.
 - QR: el token no es JWT ni GUID en memoria; es HMAC-SHA256 con ventana de 30 segundos y marca de propietario derivada de `V_PropietarioActual`.
-- Renovación: usa un permiso temporal firmado de 5 minutos; dentro de esa vigencia no consulta ni escribe en la base para regenerar el QR cada 30 segundos.
+- Renovación: no escribe tokens ni estados. Cada renovación consulta la base para invalidar inmediatamente entradas validadas, anuladas, transferidas o eventos cerrados.
+- Consumo irreversible: al validar se inserta `Validacion`, el trigger pasa la entrada a `VALIDADA` y la aplicación cancela transferencias `PENDIENTE` de esa entrada en la misma transacción.
 - Demo en una PC: descargar el QR actual como PNG y cargarlo en `/Funcionario/Escanear`; la imagen se decodifica en el navegador y no llega al servidor.
 
 ## Comandos

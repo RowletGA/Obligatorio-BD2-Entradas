@@ -3,6 +3,7 @@
     ViewData["Title"] = "Eventos";
     var desdeValue = Model.Desde?.ToString("yyyy-MM-ddTHH:mm");
     var hastaValue = Model.Hasta?.ToString("yyyy-MM-ddTHH:mm");
+    var estados = new[] { "PROGRAMADO", "EN_CURSO", "FINALIZADO", "CANCELADO" };
 }
 
 <section class="mb-4">
@@ -21,11 +22,11 @@
 
 <section class="content-panel mb-4">
     <form method="get" asp-action="Index" class="row g-3 align-items-end">
-        <div class="col-12 col-md-6 col-xl-3">
+        <div class="col-12 col-md-6 col-xl-2">
             <label for="desde" class="form-label">Desde</label>
             <input id="desde" name="desde" type="datetime-local" class="form-control" value="@desdeValue" />
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
+        <div class="col-12 col-md-6 col-xl-2">
             <label for="hasta" class="form-label">Hasta</label>
             <input id="hasta" name="hasta" type="datetime-local" class="form-control" value="@hastaValue" />
         </div>
@@ -45,54 +46,83 @@
             <label for="equipo" class="form-label">Equipo</label>
             <input id="equipo" name="equipo" class="form-control" value="@Model.Equipo" />
         </div>
+        <div class="col-12 col-md-6 col-xl-2">
+            <label for="estado" class="form-label">Estado</label>
+            <select id="estado" name="estado" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var estado in estados)
+                {
+                    <option value="@estado" selected="@(Model.Estado == estado)">@estado</option>
+                }
+            </select>
+        </div>
         <div class="col-12 col-xl-1 d-grid">
             <button type="submit" class="btn btn-primary">Filtrar</button>
         </div>
     </form>
 </section>
 
-<section class="content-panel">
-    <div class="table-responsive">
-        <table class="table align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Evento</th>
-                    <th>Estadio</th>
-                    <th>Estado</th>
-                    <th class="text-end">Detalle</th>
-                </tr>
-            </thead>
-            <tbody>
-            @if (Model.Eventos.Count == 0)
+@if (Model.Eventos.Count == 0)
+{
+    <section class="content-panel">
+        <p class="text-center text-secondary py-4 mb-0">No hay eventos para los filtros seleccionados.</p>
+    </section>
+}
+else
+{
+    <section class="event-catalog-grid">
+        @foreach (var evento in Model.Eventos)
+        {
+            var local = CountryDisplayHelper.FromCode(evento.EquipoLocal);
+            var visitante = CountryDisplayHelper.FromCode(evento.EquipoVisitante);
+            var cerrado = evento.Estado is "FINALIZADO" or "CANCELADO";
+            var estadoClase = evento.Estado switch
             {
-                <tr>
-                    <td colspan="5" class="text-center text-secondary py-4">No hay eventos para los filtros seleccionados.</td>
-                </tr>
-            }
-            else
-            {
-                @foreach (var evento in Model.Eventos)
-                {
-                    <tr>
-                        <td>@evento.FechaHora.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>
-                            <span class="fw-semibold">@(evento.EquipoLocal ?? "Local")</span>
-                            <span class="text-secondary">vs</span>
-                            <span class="fw-semibold">@(evento.EquipoVisitante ?? "Visitante")</span>
-                        </td>
-                        <td>
-                            <div>@evento.Estadio</div>
-                            <div class="small text-secondary">@evento.LocalidadEstadio, @evento.PaisEstadio</div>
-                        </td>
-                        <td><span class="badge text-bg-secondary">@evento.Estado</span></td>
-                        <td class="text-end">
-                            <a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@evento.IdEvento">Ver</a>
-                        </td>
-                    </tr>
-                }
-            }
-            </tbody>
-        </table>
-    </div>
-</section>
+                "PROGRAMADO" => "text-bg-primary",
+                "EN_CURSO" => "text-bg-success",
+                "FINALIZADO" => "text-bg-dark",
+                "CANCELADO" => "text-bg-danger",
+                _ => "text-bg-secondary"
+            };
+            <article class="event-match-card">
+                <div class="d-flex justify-content-between gap-3 align-items-start">
+                    <div>
+                        <div class="event-date">@evento.FechaHora.ToString("dd/MM/yyyy")</div>
+                        <div class="text-secondary small">@evento.FechaHora.ToString("HH:mm")</div>
+                    </div>
+                    <span class="badge @estadoClase">@(cerrado ? (evento.Estado == "FINALIZADO" ? "Finalizado" : "Cancelado") : evento.Estado)</span>
+                </div>
+
+                <div class="event-teams">
+                    <div class="event-team">
+                        <span class="country-mark @(local.EsBandera ? null : "country-mark-fallback")">@local.Visual</span>
+                        <strong>@(evento.EquipoLocal ?? "Local")</strong>
+                    </div>
+                    <div class="event-versus">VS</div>
+                    <div class="event-team text-end">
+                        <strong>@(evento.EquipoVisitante ?? "Visitante")</strong>
+                        <span class="country-mark @(visitante.EsBandera ? null : "country-mark-fallback")">@visitante.Visual</span>
+                    </div>
+                </div>
+
+                <div class="event-meta">
+                    <span>Grupo @(evento.GrupoLocal ?? evento.GrupoVisitante ?? "-")</span>
+                    <span>@evento.Estadio</span>
+                    <span>@evento.LocalidadEstadio, @evento.PaisEstadio</span>
+                    <span>@(evento.LugaresDisponibles > 0 ? $"{evento.LugaresDisponibles:N0} disponibles" : "Sin disponibilidad")</span>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    @if (evento.PermiteCompra)
+                    {
+                        <a class="btn btn-primary" asp-action="Details" asp-route-id="@evento.IdEvento">Comprar</a>
+                    }
+                    else
+                    {
+                        <a class="btn btn-outline-primary" asp-action="Details" asp-route-id="@evento.IdEvento">Ver entradas</a>
+                    }
+                </div>
+            </article>
+        }
+    </section>
+}

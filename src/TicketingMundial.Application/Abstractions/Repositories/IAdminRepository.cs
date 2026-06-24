@@ -29,5 +29,5 @@ public interface IAdminRepository
     Task<IReadOnlyList<EventoSectorAdminDto>> ListarSectoresHabilitadosEventoAsync(ulong idEvento, string paisSede, CancellationToken cancellationToken);
     Task<ulong> CrearEventoAsync(EventoCreateCommand command, string paisSede, CancellationToken cancellationToken);
     Task<bool> ActualizarEventoCompletoAsync(EventoUpdateCommand command, string paisSede, CancellationToken cancellationToken);
-    Task<bool> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken);
+    Task<EventoCambioEstadoResultadoDto?> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken);
 }

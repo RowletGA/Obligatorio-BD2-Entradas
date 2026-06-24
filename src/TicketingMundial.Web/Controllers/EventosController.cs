@@ -13,11 +13,12 @@ public sealed class EventosController(IEventoService eventoService) : Controller
         DateTime? hasta,
         ulong? idEstadio,
         string? equipo,
+        string? estado,
         CancellationToken cancellationToken)
     {
         try
         {
-            var filtro = new EventoFiltroDto(desde, hasta, idEstadio, equipo);
+            var filtro = new EventoFiltroDto(desde, hasta, idEstadio, equipo, estado);
             var eventos = await eventoService.BuscarEventosAsync(filtro, cancellationToken);
             var estadios = await eventoService.ObtenerEstadiosAsync(cancellationToken);
 
@@ -28,7 +29,8 @@ public sealed class EventosController(IEventoService eventoService) : Controller
                 Desde = desde,
                 Hasta = hasta,
                 IdEstadio = idEstadio,
-                Equipo = equipo
+                Equipo = equipo,
+                Estado = estado
             });
         }
         catch (DatabaseException ex)

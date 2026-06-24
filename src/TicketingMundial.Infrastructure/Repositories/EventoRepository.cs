@@ -26,7 +26,14 @@ public sealed class EventoRepository(
                 PaisEstadio,
                 LocalidadEstadio,
                 EquipoLocal,
-                EquipoVisitante
+                EquipoVisitante,
+                GrupoLocal,
+                GrupoVisitante,
+                COALESCE((
+                    SELECT SUM(ds.LugaresDisponibles)
+                    FROM V_DisponibilidadSectores ds
+                    WHERE ds.IDEvento = V_Eventos.IDEvento
+                ), 0) AS LugaresDisponibles
             FROM V_Eventos
             WHERE 1 = 1
             """);
@@ -61,8 +68,25 @@ public sealed class EventoRepository(
             });
         }
 
+        if (!string.IsNullOrWhiteSpace(filtro.Estado))
+        {
+            sql.AppendLine("AND EstadoEvento = @Estado");
+            parameters.Add(new MySqlParameter("@Estado", MySqlDbType.VarChar, 20) { Value = filtro.Estado.Trim().ToUpperInvariant() });
+        }
+
         sql.AppendLine();
-        sql.AppendLine("ORDER BY FechaHora, Estadio;");
+        sql.AppendLine("""
+            ORDER BY
+                CASE EstadoEvento
+                    WHEN 'PROGRAMADO' THEN 1
+                    WHEN 'EN_CURSO' THEN 2
+                    WHEN 'FINALIZADO' THEN 3
+                    WHEN 'CANCELADO' THEN 4
+                    ELSE 5
+                END,
+                FechaHora,
+                Estadio;
+            """);
 
         try
         {
@@ -100,7 +124,14 @@ public sealed class EventoRepository(
                 PaisEstadio,
                 LocalidadEstadio,
                 EquipoLocal,
-                EquipoVisitante
+                EquipoVisitante,
+                GrupoLocal,
+                GrupoVisitante,
+                COALESCE((
+                    SELECT SUM(ds.LugaresDisponibles)
+                    FROM V_DisponibilidadSectores ds
+                    WHERE ds.IDEvento = V_Eventos.IDEvento
+                ), 0) AS LugaresDisponibles
             FROM V_Eventos
             WHERE IDEvento = @IdEvento;
             """;
@@ -220,7 +251,10 @@ public sealed class EventoRepository(
             PaisEstadio = reader.GetRequiredString("PaisEstadio"),
             LocalidadEstadio = reader.GetRequiredString("LocalidadEstadio"),
             EquipoLocal = reader.GetNullableString("EquipoLocal"),
-            EquipoVisitante = reader.GetNullableString("EquipoVisitante")
+            EquipoVisitante = reader.GetNullableString("EquipoVisitante"),
+            GrupoLocal = reader.GetNullableString("GrupoLocal"),
+            GrupoVisitante = reader.GetNullableString("GrupoVisitante"),
+            LugaresDisponibles = Convert.ToInt64(reader.GetValue(reader.GetOrdinal("LugaresDisponibles")))
         };
     }
 

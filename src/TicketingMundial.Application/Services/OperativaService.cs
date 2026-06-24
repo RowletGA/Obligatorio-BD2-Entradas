@@ -18,7 +18,10 @@ public sealed class OperativaService(IOperativaRepository repository, IQrTokenSe
             return OperationResult<CompraPreviewDto>.Failure(validation.Message ?? "Cantidades inválidas.");
         }
 
-        return OperationResult<CompraPreviewDto>.Ok(await repository.ObtenerPreviewCompraAsync(idEvento, NormalizeCantidades(cantidades), cancellationToken));
+        var preview = await repository.ObtenerPreviewCompraAsync(idEvento, NormalizeCantidades(cantidades), cancellationToken);
+        return preview.EstadoEvento == EstadoEvento.Programado
+            ? OperationResult<CompraPreviewDto>.Ok(preview)
+            : OperationResult<CompraPreviewDto>.Failure("Este evento ya no admite nuevas compras.");
     }
 
     public async Task<OperationResult<CompraResultadoDto>> ComprarAsync(DocumentoUsuario comprador, ulong idEvento, IReadOnlyList<CompraSectorCantidad> cantidades, CancellationToken cancellationToken)
@@ -53,24 +56,15 @@ public sealed class OperativaService(IOperativaRepository repository, IQrTokenSe
         }
 
         var documento = NormalizeDocumento(propietario);
+        var grant = string.Empty;
+        DateTimeOffset grantVenceUtc = default;
         if (!string.IsNullOrWhiteSpace(generationGrant))
         {
             var grantValidation = qrTokenService.ValidarPermisoGeneracion(generationGrant.Trim(), documento);
             if (grantValidation.EsValido && grantValidation.Payload is not null && grantValidation.Payload.IdEntrada == idEntrada)
             {
-                var generatedFromGrant = qrTokenService.Generar(new QrTokenContext(
-                    grantValidation.Payload.IdEntrada,
-                    grantValidation.Payload.IdEvento,
-                    documento));
-                return OperationResult<QrEntradaGeneradoDto>.Ok(new QrEntradaGeneradoDto
-                {
-                    Token = generatedFromGrant.Token,
-                    VenceUtc = generatedFromGrant.VenceUtc,
-                    SegundosRestantes = generatedFromGrant.SegundosRestantes,
-                    GenerationGrant = generationGrant.Trim(),
-                    GenerationGrantVenceUtc = grantValidation.Payload.VenceUtc,
-                    ConsultoBase = false
-                });
+                grant = generationGrant.Trim();
+                grantVenceUtc = grantValidation.Payload.VenceUtc;
             }
         }
 
@@ -80,25 +74,51 @@ public sealed class OperativaService(IOperativaRepository repository, IQrTokenSe
             return OperationResult<QrEntradaGeneradoDto>.Failure("Entrada no disponible.");
         }
 
-        if (entrada.EstadoEntrada != "ACTIVA")
+        if (entrada.EstadoEntrada == EstadoEntrada.Anulada)
+        {
+            return OperationResult<QrEntradaGeneradoDto>.Failure("La entrada está anulada.");
+        }
+
+        if (entrada.EstadoEntrada == EstadoEntrada.Validada)
+        {
+            return OperationResult<QrEntradaGeneradoDto>.Failure("La entrada ya fue validada.");
+        }
+
+        if (entrada.EstadoEntrada != EstadoEntrada.Activa)
         {
             return OperationResult<QrEntradaGeneradoDto>.Failure("La entrada ya no está activa.");
         }
 
-        if (entrada.EstadoEvento is not ("PROGRAMADO" or "EN_CURSO"))
+        if (entrada.EstadoEvento == EstadoEvento.Cancelado)
+        {
+            return OperationResult<QrEntradaGeneradoDto>.Failure("El evento fue cancelado.");
+        }
+
+        if (entrada.EstadoEvento == EstadoEvento.Finalizado)
+        {
+            return OperationResult<QrEntradaGeneradoDto>.Failure("El evento ya finalizó.");
+        }
+
+        if (entrada.EstadoEvento is not (EstadoEvento.Programado or EstadoEvento.EnCurso))
         {
             return OperationResult<QrEntradaGeneradoDto>.Failure("El evento no admite validación en este momento.");
         }
 
         var generated = qrTokenService.Generar(new QrTokenContext(entrada.IdEntrada, entrada.IdEvento, entrada.PropietarioActual));
-        var grant = qrTokenService.GenerarPermisoGeneracion(new QrTokenContext(entrada.IdEntrada, entrada.IdEvento, entrada.PropietarioActual), TimeSpan.FromMinutes(5));
+        if (string.IsNullOrWhiteSpace(grant))
+        {
+            var newGrant = qrTokenService.GenerarPermisoGeneracion(new QrTokenContext(entrada.IdEntrada, entrada.IdEvento, entrada.PropietarioActual), TimeSpan.FromMinutes(5));
+            grant = newGrant.Grant;
+            grantVenceUtc = newGrant.VenceUtc;
+        }
+
         return OperationResult<QrEntradaGeneradoDto>.Ok(new QrEntradaGeneradoDto
         {
             Token = generated.Token,
             VenceUtc = generated.VenceUtc,
             SegundosRestantes = generated.SegundosRestantes,
-            GenerationGrant = grant.Grant,
-            GenerationGrantVenceUtc = grant.VenceUtc,
+            GenerationGrant = grant,
+            GenerationGrantVenceUtc = grantVenceUtc,
             ConsultoBase = true
         });
     }
@@ -211,6 +231,17 @@ public sealed class OperativaService(IOperativaRepository repository, IQrTokenSe
     public Task<IReadOnlyList<ReporteCompradorDto>> ReporteCompradoresAsync(DateTime? desde, DateTime? hasta, int limite, CancellationToken cancellationToken) =>
         repository.ReporteCompradoresAsync(desde, hasta, ClampLimit(limite), cancellationToken);
 
+    public Task<IReadOnlyList<ReporteValidacionesFuncionarioDto>> ReporteValidacionesPorFuncionarioAsync(
+        ulong? idEvento,
+        string? funcionario,
+        DateTime? desde,
+        DateTime? hasta,
+        CancellationToken cancellationToken) =>
+        repository.ReporteValidacionesPorFuncionarioAsync(idEvento, NullIfWhiteSpace(funcionario), desde, hasta, cancellationToken);
+
+    public Task<IReadOnlyList<ReporteTransferidorDto>> ReporteTransferidoresAsync(DateTime? desde, DateTime? hasta, int limite, CancellationToken cancellationToken) =>
+        repository.ReporteTransferidoresAsync(desde, hasta, ClampLimit(limite), cancellationToken);
+
     private static OperationResult ValidateCantidades(IReadOnlyList<CompraSectorCantidad> cantidades)
     {
         var total = cantidades.Where(item => item.Cantidad > 0).Sum(item => item.Cantidad);
@@ -243,4 +274,6 @@ public sealed class OperativaService(IOperativaRepository repository, IQrTokenSe
         new(documento.TipoDocumento.Trim().ToUpperInvariant(), documento.PaisDocumento.Trim().ToUpperInvariant(), documento.NumeroDocumento.Trim());
 
     private static int ClampLimit(int limite) => limite is < 1 or > 100 ? 10 : limite;
+
+    private static string? NullIfWhiteSpace(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

@@ -137,6 +137,23 @@ Limitaciones:
 - El entorno local tiene runtime .NET 10 y no .NET 8; para ejecutar tests se usó `DOTNET_ROLL_FORWARD=Major`.
 - Historial de validaciones se mantiene en el alcance actual de funcionario/asignaciones sin pantalla nueva específica.
 
+## 2026-06-24 - Revisión E2E de compra, QR y consumo irreversible
+
+Funcionalidades/correcciones:
+
+- `/Entradas/MisEntradas` y detalle muestran estado de entrada y estado de evento.
+- El detalle muestra QR solo si la entrada está `ACTIVA` y el evento está `PROGRAMADO` o `EN_CURSO`.
+- La acción de transferir se oculta y se bloquea en servidor si la entrada no está `ACTIVA` o el evento está cerrado.
+- Aceptar una transferencia revalida dentro de transacción que la entrada siga `ACTIVA` y el evento no esté cerrado.
+- Validar una entrada cancela transferencias `PENDIENTE` de esa entrada dentro de la misma transacción.
+- Segundo escaneo y QR posterior a validación quedan rechazados.
+
+Pruebas:
+
+- `dotnet build TicketingMundial.sln`: correcto.
+- `DOTNET_ROLL_FORWARD=Major dotnet test TicketingMundial.sln`: 113 exitosas.
+- Smoke E2E real contra MySQL: compra creó entrada `ACTIVA`, QR generado, validación insertó una fila en `Validacion`, trigger dejó entrada `VALIDADA`, QR posterior y segundo escaneo rechazados, transferencia pendiente cancelada.
+
 ## 2026-06-22 - Corrección edición de eventos y asignaciones
 
 Funcionalidades:

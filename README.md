@@ -36,6 +36,23 @@ QrSecurity__SigningKey="$(openssl rand -base64 32)"
 
 No guardar credenciales reales en Git.
 
+Para desarrollo local, se recomienda guardar la clave QR con user-secrets:
+
+```bash
+dotnet user-secrets init --project src/TicketingMundial.Web
+
+dotnet user-secrets set \
+  "QrSecurity:SigningKey" \
+  "$(openssl rand -base64 32)" \
+  --project src/TicketingMundial.Web
+```
+
+Alternativamente, se puede usar una variable de entorno:
+
+```bash
+export QrSecurity__SigningKey="$(openssl rand -base64 32)"
+```
+
 `src/TicketingMundial.Web/appsettings.Development.json` es local y está ignorado por Git. Debe tener este formato, usando valores reales solo en la máquina de desarrollo:
 
 ```json
@@ -51,7 +68,7 @@ No guardar credenciales reales en Git.
 }
 ```
 
-El valor `CONFIGURAR_MEDIANTE_VARIABLE_DE_ENTORNO` es solo un marcador y la aplicación lo rechaza al iniciar. Generar una clave local con `openssl rand -base64 32` o definir `QrSecurity__SigningKey` como variable de entorno.
+El valor `CONFIGURAR_MEDIANTE_VARIABLE_DE_ENTORNO` es solo un marcador. En `Production`, la aplicación lo rechaza al iniciar. En `Development`, si `QrSecurity:SigningKey` falta o no es válida, se genera una clave temporal segura en memoria; los QR emitidos dejan de ser válidos al reiniciar la aplicación.
 
 Confirmar que no se versiona:
 

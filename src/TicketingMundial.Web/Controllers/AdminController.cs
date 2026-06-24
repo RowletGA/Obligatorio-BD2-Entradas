@@ -306,7 +306,15 @@ public sealed class AdminController(
     public async Task<IActionResult> CambiarEstadoEvento(ulong id, EventoEstadoViewModel model, CancellationToken cancellationToken)
     {
         var result = await adminService.CambiarEstadoEventoAsync(GetDocumento(), id, model.EstadoEvento, cancellationToken);
-        TempData[result.Success ? "Success" : "Error"] = result.Message;
+        if (result.Success && result.Value is not null)
+        {
+            TempData["Success"] = $"{result.Message} Entradas validadas: {result.Value.EntradasValidadas}. Entradas anuladas: {result.Value.EntradasAnuladas}. Transferencias pendientes canceladas: {result.Value.TransferenciasPendientesCanceladas}.";
+        }
+        else
+        {
+            TempData["Error"] = result.Message;
+        }
+
         return RedirectToAction(nameof(EventoDetalle), new { id });
     }
 

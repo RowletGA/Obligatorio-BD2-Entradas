@@ -11,4 +11,8 @@ public sealed class EventoResumenDto
     public string LocalidadEstadio { get; init; } = string.Empty;
     public string? EquipoLocal { get; init; }
     public string? EquipoVisitante { get; init; }
+    public string? GrupoLocal { get; init; }
+    public string? GrupoVisitante { get; init; }
+    public long LugaresDisponibles { get; init; }
+    public bool PermiteCompra => Estado == "PROGRAMADO" && LugaresDisponibles > 0;
 }

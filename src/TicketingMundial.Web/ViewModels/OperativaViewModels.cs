@@ -64,8 +64,12 @@ public sealed class ReportesViewModel
 {
     public DateTime? Desde { get; set; }
     public DateTime? Hasta { get; set; }
+    public ulong? IdEvento { get; set; }
+    public string? Funcionario { get; set; }
     [Range(1, 100)]
     public int Limite { get; set; } = 10;
     public IReadOnlyList<ReporteEventoVendidoDto> Eventos { get; set; } = [];
     public IReadOnlyList<ReporteCompradorDto> Compradores { get; set; } = [];
+    public IReadOnlyList<ReporteValidacionesFuncionarioDto> ValidacionesPorFuncionario { get; set; } = [];
+    public IReadOnlyList<ReporteTransferidorDto> Transferidores { get; set; } = [];
 }

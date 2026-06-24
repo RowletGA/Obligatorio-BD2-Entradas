@@ -212,7 +212,7 @@ public sealed class AdminService(
     {
         var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
         var evento = await adminRepository.ObtenerEventoAsync(idEvento, admin.PaisSede, cancellationToken);
-        if (evento is null || EsEstadoCerrado(evento.EstadoEvento))
+        if (evento is null || EstadoEventoTransitions.EsCerrado(evento.EstadoEvento))
         {
             return [];
         }
@@ -262,7 +262,7 @@ public sealed class AdminService(
             return OperationResult.Failure("Este evento ya tiene entradas emitidas. Para preservar la consistencia de las entradas, solamente puede modificarse su estado.");
         }
 
-        if (EsEstadoCerrado(actual.EstadoEvento))
+        if (EstadoEventoTransitions.EsCerrado(actual.EstadoEvento))
         {
             return OperationResult.Failure("Los eventos finalizados o cancelados no permiten edición estructural.");
         }
@@ -293,19 +293,31 @@ public sealed class AdminService(
             : OperationResult.Failure("No se encontró el evento dentro de su jurisdicción.");
     }
 
-    public async Task<OperationResult> CambiarEstadoEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, string estado, CancellationToken cancellationToken)
+    public async Task<OperationResult<EventoCambioEstadoResultadoDto>> CambiarEstadoEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, string estado, CancellationToken cancellationToken)
     {
         var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
         var normalized = estado.Trim().ToUpperInvariant();
         if (!EstadosPermitidos.Contains(normalized, StringComparer.Ordinal))
         {
-            return OperationResult.Failure("El estado del evento no es válido.");
+            return OperationResult<EventoCambioEstadoResultadoDto>.Failure("El estado del evento no es válido.");
         }
 
-        var updated = await adminRepository.CambiarEstadoEventoAsync(idEvento, normalized, admin.PaisSede, cancellationToken);
-        return updated
-            ? OperationResult.Ok("Estado actualizado correctamente.")
-            : OperationResult.Failure("No se encontró el evento dentro de su jurisdicción.");
+        var actual = await adminRepository.ObtenerEventoAsync(idEvento, admin.PaisSede, cancellationToken);
+        if (actual is null)
+        {
+            return OperationResult<EventoCambioEstadoResultadoDto>.Failure("No se encontró el evento dentro de su jurisdicción.");
+        }
+
+        var rechazo = EstadoEventoTransitions.ObtenerMotivoRechazo(actual.EstadoEvento, normalized);
+        if (rechazo is not null)
+        {
+            return OperationResult<EventoCambioEstadoResultadoDto>.Failure(rechazo);
+        }
+
+        var result = await adminRepository.CambiarEstadoEventoAsync(idEvento, normalized, admin.PaisSede, cancellationToken);
+        return result is not null
+            ? OperationResult<EventoCambioEstadoResultadoDto>.Ok(result, "Estado actualizado correctamente.")
+            : OperationResult<EventoCambioEstadoResultadoDto>.Failure("No se encontró el evento dentro de su jurisdicción o la transición ya no es válida.");
     }
 
     private async Task<AdministradorActualDto> RequireAdminAsync(DocumentoUsuario documento, CancellationToken cancellationToken)
@@ -410,12 +422,6 @@ public sealed class AdminService(
             .GroupBy(sector => sector.IdSector)
             .Select(group => group.First())
             .ToArray();
-    }
-
-    private static bool EsEstadoCerrado(string estado)
-    {
-        return estado.Equals(EstadoEvento.Finalizado, StringComparison.OrdinalIgnoreCase) ||
-            estado.Equals(EstadoEvento.Cancelado, StringComparison.OrdinalIgnoreCase);
     }
 
     private static int ClampPage(int page)

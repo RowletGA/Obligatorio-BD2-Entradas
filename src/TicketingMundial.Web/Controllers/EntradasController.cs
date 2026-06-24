@@ -43,6 +43,7 @@ public sealed class EntradasController(IOperativaService operativaService) : Con
         return Json(new
         {
             imagenBase64 = Convert.ToBase64String(png),
+            token = result.Value.Token,
             venceUtc = result.Value.VenceUtc,
             segundosRestantes = result.Value.SegundosRestantes,
             generationGrant = result.Value.GenerationGrant,
@@ -55,7 +56,18 @@ public sealed class EntradasController(IOperativaService operativaService) : Con
     public async Task<IActionResult> Transferir(ulong id, CancellationToken cancellationToken)
     {
         var entrada = await operativaService.ObtenerEntradaPropiaAsync(GetDocumento(), id, cancellationToken);
-        return entrada is null ? NotFound() : View(new TransferenciaCrearViewModel { IdEntrada = id });
+        if (entrada is null)
+        {
+            return NotFound();
+        }
+
+        if (entrada.EstadoEntrada != "ACTIVA" || entrada.EstadoEvento is "FINALIZADO" or "CANCELADO")
+        {
+            TempData["Error"] = "La entrada ya no puede transferirse.";
+            return RedirectToAction(nameof(Detalle), new { id });
+        }
+
+        return View(new TransferenciaCrearViewModel { IdEntrada = id });
     }
 
     private DocumentoUsuario GetDocumento() => new(User.GetTipoDocumento() ?? string.Empty, User.GetPaisDocumento() ?? string.Empty, User.GetNumeroDocumento() ?? string.Empty);

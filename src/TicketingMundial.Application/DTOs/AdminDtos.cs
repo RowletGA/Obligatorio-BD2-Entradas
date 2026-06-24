@@ -73,6 +73,15 @@ public sealed class EventoSectorAdminDto
     public decimal PrecioBase { get; init; }
 }
 
+public sealed class EventoCambioEstadoResultadoDto
+{
+    public string EstadoAnterior { get; init; } = string.Empty;
+    public string EstadoNuevo { get; init; } = string.Empty;
+    public int EntradasValidadas { get; init; }
+    public int EntradasAnuladas { get; init; }
+    public int TransferenciasPendientesCanceladas { get; init; }
+}
+
 public sealed class PagedResult<T>
 {
     public IReadOnlyList<T> Items { get; init; } = [];

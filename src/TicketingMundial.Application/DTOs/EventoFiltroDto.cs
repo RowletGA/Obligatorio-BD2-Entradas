@@ -4,4 +4,5 @@ public sealed record EventoFiltroDto(
     DateTime? Desde,
     DateTime? Hasta,
     ulong? IdEstadio,
-    string? Equipo);
+    string? Equipo,
+    string? Estado = null);

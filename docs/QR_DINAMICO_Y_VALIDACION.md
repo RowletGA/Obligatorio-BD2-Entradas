@@ -28,9 +28,9 @@ También existen `QrSecurity:LifetimeSeconds` y `QrSecurity:ClockSkewSeconds`. L
 
 El detalle de entrada solicita el QR al servidor, muestra contador, renueva al vencer, pausa si `document.hidden` es `true` y renueva inmediatamente al volver a estar visible.
 
-La primera generación o la renovación con permiso vencido consulta la base y emite un permiso temporal firmado (`generationGrant`) de 5 minutos. Mientras ese permiso esté vigente, las renovaciones de 30 segundos validan criptográficamente el permiso y generan el QR actual sin consultar la base y sin escribir nada.
+Cada generación y renovación consulta la base para confirmar propietario actual, entrada `ACTIVA` y evento `PROGRAMADO` o `EN_CURSO`. El permiso temporal firmado (`generationGrant`) permite conservar continuidad criptográfica de la pantalla, pero no evita la comprobación final contra la base. Si la entrada se valida, se anula, se transfiere o el evento se cierra, la siguiente renovación se detiene.
 
-La generación no realiza `INSERT`, `UPDATE` ni `DELETE`; la única escritura relacionada al QR ocurre cuando el funcionario valida correctamente y se inserta `Validacion.TokenValidado`.
+La generación no realiza `INSERT`, `UPDATE` ni `DELETE`; solo lee `Entrada`, `Evento` y `V_PropietarioActual`. La única escritura relacionada al QR ocurre cuando el funcionario valida correctamente y se inserta `Validacion.TokenValidado`.
 
 El botón `Descargar QR actual` descarga el PNG ya renderizado en pantalla. No genera un token nuevo, no extiende la vigencia y no incluye datos personales en el nombre del archivo.
 
@@ -48,7 +48,22 @@ Si el navegador no soporta `BarcodeDetector`, se muestra un mensaje claro y se m
 
 `POST /Funcionario/ValidarQr` recibe únicamente `token`, requiere antiforgery, rol `FUNCIONARIO` y rate limiting.
 
-La validación abre transacción, bloquea `Entrada` con `SELECT ... FOR UPDATE`, recalcula propietario, valida firma/ventana/evento/marca, confirma asignación en `FuncionarioEventoSector`, inserta en `Validacion` con el token exacto y deja que los triggers marquen la entrada como `VALIDADA`.
+La validación abre transacción, bloquea `Entrada` con `SELECT ... FOR UPDATE`, recalcula propietario, valida firma/ventana/evento/marca, confirma asignación en `FuncionarioEventoSector`, inserta en `Validacion` con el token exacto, cancela transferencias `PENDIENTE` de esa entrada y deja que los triggers marquen la entrada como `VALIDADA`. Luego vuelve a consultar el resultado final antes del commit.
+
+Política posterior a la validación:
+
+```text
+Compra
+→ Entrada ACTIVA
+→ Propietario actual
+→ QR dinámico
+→ Validación
+→ Fila en Validacion
+→ Entrada VALIDADA
+→ QR y transferencia bloqueados
+```
+
+Una entrada `VALIDADA` no genera nuevos QR, no muestra acción de transferencia, no puede aceptar transferencias pendientes y rechaza un segundo escaneo.
 
 ## Dispositivos autorizados
 

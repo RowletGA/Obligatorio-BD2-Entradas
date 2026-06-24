@@ -1,7 +1,9 @@
 @model EventoAdminDto
+@using TicketingMundial.Domain.Estados
 @{
     ViewData["Title"] = $"Evento {Model.IdEvento}";
-    var edicionBloqueada = Model.EntradasEmitidas > 0 || Model.EstadoEvento is "FINALIZADO" or "CANCELADO";
+    var edicionBloqueada = Model.EntradasEmitidas > 0 || EstadoEventoTransitions.EsCerrado(Model.EstadoEvento);
+    var estadosPermitidos = EstadoEventoTransitions.ObtenerDestinosPermitidos(Model.EstadoEvento);
 }
 
 <section class="page-heading">
@@ -32,16 +34,38 @@
         {
             <a class="btn btn-primary" asp-action="EditarEvento" asp-route-id="@Model.IdEvento">Editar evento</a>
         }
-        <form asp-action="CambiarEstadoEvento" asp-route-id="@Model.IdEvento" method="post" class="d-flex flex-wrap gap-2">
-            <select name="EstadoEvento" class="form-select" style="max-width: 220px">
-                @foreach (var estado in new[] { "PROGRAMADO", "EN_CURSO", "FINALIZADO", "CANCELADO" })
-                {
-                    <option value="@estado" selected="@(estado == Model.EstadoEvento)">@estado</option>
-                }
-            </select>
-            <button class="btn btn-outline-primary">Cambiar estado</button>
-        </form>
     </div>
+</section>
+
+<section class="content-panel mb-3">
+    <h2 class="h5">Cambiar estado</h2>
+    <p class="text-secondary mb-3">Estado actual: <strong>@Model.EstadoEvento</strong></p>
+    @if (estadosPermitidos.Count == 0)
+    {
+        <p class="text-secondary mb-0">Este evento no tiene transiciones disponibles.</p>
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-2">
+            @foreach (var estado in estadosPermitidos)
+            {
+                var confirmacion = estado switch
+                {
+                    EstadoEvento.Cancelado => "Al cancelar el evento se anularán todas las entradas no utilizadas. Esta operación no puede deshacerse. ¿Deseás continuar?",
+                    EstadoEvento.Finalizado => "Al finalizar el evento, las entradas no utilizadas dejarán de ser válidas. Esta operación no puede deshacerse. ¿Deseás continuar?",
+                    _ => null
+                };
+                <form asp-action="CambiarEstadoEvento" asp-route-id="@Model.IdEvento" method="post" onsubmit="@(confirmacion is null ? null : $"return confirm('{confirmacion}')")">
+                    <input type="hidden" name="EstadoEvento" value="@estado" />
+                    <button class="btn @(estado is EstadoEvento.Cancelado or EstadoEvento.Finalizado ? "btn-outline-danger" : "btn-outline-primary")">Pasar a @estado</button>
+                    @if (confirmacion is not null)
+                    {
+                        <span class="text-secondary small ms-md-2 d-block d-md-inline mt-2 mt-md-0">Operación irreversible: anula entradas no utilizadas y cancela transferencias pendientes.</span>
+                    }
+                </form>
+            }
+        </div>
+    }
 </section>
 
 <section class="content-panel">

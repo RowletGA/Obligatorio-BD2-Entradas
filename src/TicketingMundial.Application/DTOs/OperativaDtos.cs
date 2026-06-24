@@ -20,6 +20,7 @@ public sealed class CompraPreviewDto
     public string Evento { get; init; } = string.Empty;
     public DateTime FechaHora { get; init; }
     public string Estadio { get; init; } = string.Empty;
+    public string EstadoEvento { get; init; } = string.Empty;
     public decimal PorcentajeComision { get; init; } = 5m;
     public IReadOnlyList<CompraLineaDto> Lineas { get; init; } = [];
     public decimal Subtotal => Lineas.Sum(linea => linea.Subtotal);
@@ -54,6 +55,7 @@ public sealed class EntradaResumenDto
     public ulong IdEntrada { get; init; }
     public ulong IdEvento { get; init; }
     public DateTime FechaEvento { get; init; }
+    public string EstadoEvento { get; init; } = string.Empty;
     public string Evento { get; init; } = string.Empty;
     public string Estadio { get; init; } = string.Empty;
     public ulong IdSector { get; init; }
@@ -139,4 +141,23 @@ public sealed class ReporteCompradorDto
     public string Correo { get; init; } = string.Empty;
     public int EntradasCompradas { get; init; }
     public decimal TotalGastado { get; init; }
+}
+
+public sealed class ReporteValidacionesFuncionarioDto
+{
+    public string Funcionario { get; init; } = string.Empty;
+    public string NumLegajo { get; init; } = string.Empty;
+    public ulong IdEvento { get; init; }
+    public string Evento { get; init; } = string.Empty;
+    public string Estadio { get; init; } = string.Empty;
+    public string Sector { get; init; } = string.Empty;
+    public int EntradasValidadas { get; init; }
+}
+
+public sealed class ReporteTransferidorDto
+{
+    public string Usuario { get; init; } = string.Empty;
+    public string Correo { get; init; } = string.Empty;
+    public int TransferenciasAceptadas { get; init; }
+    public int TransferenciasSolicitadas { get; init; }
 }

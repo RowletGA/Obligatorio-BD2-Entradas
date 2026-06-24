@@ -26,5 +26,5 @@ public interface IAdminService
     Task<IReadOnlyList<EventoSectorAdminDto>> ListarSectoresHabilitadosEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, CancellationToken cancellationToken);
     Task<OperationResult<ulong>> CrearEventoAsync(DocumentoUsuario adminDocumento, EventoCreateCommand command, CancellationToken cancellationToken);
     Task<OperationResult> EditarEventoAsync(DocumentoUsuario adminDocumento, EventoUpdateCommand command, CancellationToken cancellationToken);
-    Task<OperationResult> CambiarEstadoEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, string estado, CancellationToken cancellationToken);
+    Task<OperationResult<EventoCambioEstadoResultadoDto>> CambiarEstadoEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, string estado, CancellationToken cancellationToken);
 }

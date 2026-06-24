@@ -16,6 +16,8 @@ public sealed class ReportesController(IOperativaService operativaService) : Con
         var hasta = NormalizeInclusiveHasta(model.Hasta);
         model.Eventos = await operativaService.ReporteEventosVendidosAsync(model.Desde, hasta, model.Limite, cancellationToken);
         model.Compradores = await operativaService.ReporteCompradoresAsync(model.Desde, hasta, model.Limite, cancellationToken);
+        model.ValidacionesPorFuncionario = await operativaService.ReporteValidacionesPorFuncionarioAsync(model.IdEvento, model.Funcionario, model.Desde, hasta, cancellationToken);
+        model.Transferidores = await operativaService.ReporteTransferidoresAsync(model.Desde, hasta, model.Limite, cancellationToken);
         return View(model);
     }
 

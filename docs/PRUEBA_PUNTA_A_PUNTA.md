@@ -116,7 +116,27 @@ Resultado esperado:
 
 - Compra confirmada.
 - Venta con total calculado por trigger.
+- Entrada inicial `ACTIVA` visible en `/Entradas/MisEntradas`.
+- QR dinámico visible solo para entrada `ACTIVA` y evento abierto.
 - Transferencia aceptada cambia propietario.
 - Validación marca entrada como `VALIDADA`.
+- La validación inserta una única fila en `Validacion` y guarda `TokenValidado`.
+- Las transferencias `PENDIENTE` de una entrada validada pasan a `CANCELADA`.
+- El detalle deja de mostrar QR y transferencia.
 - Segundo intento falla.
 - Reportes muestran resultados.
+
+## Smoke E2E ejecutado
+
+Última corrida con datos demo:
+
+- Evento: `5`.
+- Sector: `3`.
+- Venta creada: `10`.
+- Entrada validada: `20`.
+- Estado inicial: `ACTIVA`.
+- Estado final: `VALIDADA`.
+- Validaciones registradas para la entrada: `1`.
+- QR posterior a validación: rechazado.
+- Segundo escaneo: rechazado.
+- Transferencia pendiente creada antes de validar: cancelada automáticamente.

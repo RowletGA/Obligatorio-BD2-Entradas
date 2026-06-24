@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Cryptography;
 using System.Threading.RateLimiting;
 using TicketingMundial.Domain.Identity;
 using TicketingMundial.Application;
@@ -7,6 +8,12 @@ using TicketingMundial.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("catalogos-registro.json", optional: false, reloadOnChange: true);
+var generatedDevelopmentQrSigningKey = false;
+if (builder.Environment.IsDevelopment() && !HasValidQrSigningKey(builder.Configuration))
+{
+    builder.Configuration["QrSecurity:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+    generatedDevelopmentQrSigningKey = true;
+}
 
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<CatalogosRegistroOptions>(
@@ -91,6 +98,11 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+if (generatedDevelopmentQrSigningKey)
+{
+    app.Logger.LogWarning("No se configuró QrSecurity:SigningKey. Se generó una clave temporal para Development. Los QR dejarán de ser válidos al reiniciar la aplicación.");
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -118,3 +130,31 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
+static bool HasValidQrSigningKey(IConfiguration configuration)
+{
+    var signingKey = configuration.GetSection(QrSecurityOptions.SectionName).Get<QrSecurityOptions>()?.SigningKey;
+    return HasValidQrSigningKeyValue(signingKey);
+}
+
+static bool HasValidQrSigningKeyValue(string? signingKey)
+{
+    if (string.IsNullOrWhiteSpace(signingKey))
+    {
+        return false;
+    }
+
+    if (string.Equals(signingKey.Trim(), "CONFIGURAR_MEDIANTE_VARIABLE_DE_ENTORNO", StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
+    }
+
+    try
+    {
+        return Convert.FromBase64String(signingKey).Length >= 32;
+    }
+    catch (FormatException)
+    {
+        return System.Text.Encoding.UTF8.GetByteCount(signingKey) >= 32;
+    }
+}
