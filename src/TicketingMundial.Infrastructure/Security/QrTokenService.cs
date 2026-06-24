@@ -87,18 +87,18 @@ public sealed class QrTokenService(IOptions<QrSecurityOptions> options, TimeProv
             return ResultadoValidacionQr.Rechazado("QR alterado.", payload);
         }
 
-        var expectedOwnerMark = CreateOwnerMark(contexto.PropietarioActual);
-        if (!FixedTimeEquals(payload.MarcaPropietario, expectedOwnerMark))
-        {
-            return ResultadoValidacionQr.Rechazado("QR emitido para un propietario anterior.", payload);
-        }
-
         var parts = token.Trim().Split('.');
         var signingInput = string.Join('.', parts.Take(SegmentCount - 1));
         var expectedSignature = Sign(signingInput);
         if (!FixedTimeEquals(parts[5], expectedSignature))
         {
             return ResultadoValidacionQr.Rechazado("QR alterado.", payload);
+        }
+
+        var expectedOwnerMark = CreateOwnerMark(contexto.PropietarioActual);
+        if (!FixedTimeEquals(payload.MarcaPropietario, expectedOwnerMark))
+        {
+            return ResultadoValidacionQr.Rechazado("QR emitido para un propietario anterior.", payload);
         }
 
         var nowSeconds = timeProvider.GetUtcNow().ToUnixTimeSeconds();

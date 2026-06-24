@@ -3,6 +3,30 @@
 
 <section class="page-heading"><p class="section-kicker">Funcionario</p><h1>Escanear entradas</h1></section>
 
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <section class="content-panel mb-3 border-danger">
+        <h2 class="h5 text-danger">QR rechazado</h2>
+        <p class="mb-0">@Model.Error</p>
+    </section>
+}
+
+@if (Model.Resultado is not null)
+{
+    <section class="content-panel mb-3 border-success">
+        <h2 class="h5 text-success">Entrada validada correctamente.</h2>
+        <div class="detail-grid mt-3">
+            <div><span>ID entrada</span><strong>@Model.Resultado.IdEntrada</strong></div>
+            <div><span>Estado final</span><strong>@Model.Resultado.EstadoEntrada</strong></div>
+            <div><span>Evento</span><strong>@Model.Resultado.Evento</strong></div>
+            <div><span>Sector</span><strong>@Model.Resultado.Sector</strong></div>
+            <div><span>Fecha evento</span><strong>@Model.Resultado.FechaEvento.ToString("dd/MM/yyyy HH:mm")</strong></div>
+            <div><span>Hora validación</span><strong>@(Model.Resultado.FechaHoraValidacion?.ToString("dd/MM/yyyy HH:mm") ?? "Registrada")</strong></div>
+        </div>
+        <a class="btn btn-outline-primary mt-3" asp-action="Escanear">Validar otro QR</a>
+    </section>
+}
+
 <section class="content-panel mb-3" data-qr-image-reader>
     <h2 class="h5 mb-1">Cargar imagen</h2>
     <p class="text-secondary">Seleccioná una captura, PNG, JPG, WebP o foto del QR.</p>
@@ -34,22 +58,6 @@
     <textarea asp-for="Token" class="form-control" rows="3" maxlength="255" autocomplete="off"></textarea>
     <button class="btn btn-primary mt-3">Validar</button>
 </form>
-
-@if (Model.Resultado is not null)
-{
-    <section class="content-panel">
-        <h2 class="h5">Resultado</h2>
-        <div class="detail-grid">
-            <div><span>Estado</span><strong>@(Model.Resultado.EstadoEntrada == "VALIDADA" ? "Entrada válida" : Model.Resultado.ResultadoValidacion)</strong></div>
-            <div><span>Evento</span><strong>@Model.Resultado.Evento</strong></div>
-            <div><span>Fecha</span><strong>@Model.Resultado.FechaEvento.ToString("dd/MM/yyyy HH:mm")</strong></div>
-            <div><span>Estadio</span><strong>@Model.Resultado.Estadio</strong></div>
-            <div><span>Sector</span><strong>@Model.Resultado.Sector</strong></div>
-            <div><span>Validación</span><strong>@(Model.Resultado.FechaHoraValidacion?.ToString("dd/MM/yyyy HH:mm") ?? "Registrada")</strong></div>
-        </div>
-        <a class="btn btn-outline-primary mt-3" asp-action="Escanear">Validar otro QR</a>
-    </section>
-}
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

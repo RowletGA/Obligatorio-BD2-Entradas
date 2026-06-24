@@ -14,12 +14,14 @@ public sealed class EntradasController(IOperativaService operativaService) : Con
     [HttpGet("/Entradas/MisEntradas")]
     public async Task<IActionResult> MisEntradas(CancellationToken cancellationToken)
     {
+        SetNoStore();
         return View(await operativaService.ListarEntradasPropiasAsync(GetDocumento(), cancellationToken));
     }
 
     [HttpGet("/Entradas/Detalle/{id:long}")]
     public async Task<IActionResult> Detalle(ulong id, CancellationToken cancellationToken)
     {
+        SetNoStore();
         var entrada = await operativaService.ObtenerEntradaPropiaAsync(GetDocumento(), id, cancellationToken);
         return entrada is null ? NotFound() : View(entrada);
     }
@@ -71,4 +73,11 @@ public sealed class EntradasController(IOperativaService operativaService) : Con
     }
 
     private DocumentoUsuario GetDocumento() => new(User.GetTipoDocumento() ?? string.Empty, User.GetPaisDocumento() ?? string.Empty, User.GetNumeroDocumento() ?? string.Empty);
+
+    private void SetNoStore()
+    {
+        Response.Headers.CacheControl = "no-store, no-cache";
+        Response.Headers.Pragma = "no-cache";
+        Response.Headers.Expires = "0";
+    }
 }

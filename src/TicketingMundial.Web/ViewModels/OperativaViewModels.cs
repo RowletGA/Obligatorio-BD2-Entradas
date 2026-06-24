@@ -58,6 +58,7 @@ public sealed class ValidarQrViewModel
     [StringLength(255)]
     public string Token { get; set; } = string.Empty;
     public ValidacionEntradaDto? Resultado { get; set; }
+    public string? Error { get; set; }
 }
 
 public sealed class ReportesViewModel

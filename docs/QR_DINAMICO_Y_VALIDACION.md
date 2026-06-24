@@ -50,6 +50,8 @@ Si el navegador no soporta `BarcodeDetector`, se muestra un mensaje claro y se m
 
 La validación abre transacción, bloquea `Entrada` con `SELECT ... FOR UPDATE`, recalcula propietario, valida firma/ventana/evento/marca, confirma asignación en `FuncionarioEventoSector`, inserta en `Validacion` con el token exacto, cancela transferencias `PENDIENTE` de esa entrada y deja que los triggers marquen la entrada como `VALIDADA`. Luego vuelve a consultar el resultado final antes del commit.
 
+El flujo web usa POST/Redirect/GET: después de validar redirige a `/Funcionario/Escanear` con una tarjeta de éxito o rechazo. La tarjeta de éxito muestra el estado final devuelto por la base, por lo que el funcionario ve `VALIDADA` cuando el trigger ya actualizó la entrada. Las páginas dinámicas de entrada y validación envían encabezados `no-store` para evitar que el navegador conserve una vista anterior con estado `ACTIVA`.
+
 Política posterior a la validación:
 
 ```text

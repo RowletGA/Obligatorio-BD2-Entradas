@@ -26,7 +26,7 @@ Usar datos demo identificables. No incluir contraseñas ni documentos reales.
 22. Como comprador, abrir detalle de una entrada activa y confirmar QR dinámico.
 23. Como funcionario, abrir `/Funcionario/Escanear`.
 24. Escanear el QR o pegar el token como fallback manual.
-25. Confirmar validación correcta y que `Validacion.TokenValidado` guarda el token exacto.
+25. Confirmar tarjeta de validación correcta con estado final `VALIDADA` y que `Validacion.TokenValidado` guarda el token exacto.
 26. Intentar validar otra vez y confirmar rechazo funcional.
 27. Como administrador, abrir `/Admin/Reportes`.
 
@@ -120,6 +120,7 @@ Resultado esperado:
 - QR dinámico visible solo para entrada `ACTIVA` y evento abierto.
 - Transferencia aceptada cambia propietario.
 - Validación marca entrada como `VALIDADA`.
+- El funcionario ve feedback claro de éxito o rechazo después del redirect.
 - La validación inserta una única fila en `Validacion` y guarda `TokenValidado`.
 - Las transferencias `PENDIENTE` de una entrada validada pasan a `CANCELADA`.
 - El detalle deja de mostrar QR y transferencia.
