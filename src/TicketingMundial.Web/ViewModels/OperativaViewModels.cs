@@ -29,14 +29,51 @@ public sealed class TransferenciaCrearViewModel
 
 public sealed class TransferenciasIndexViewModel
 {
-    public IReadOnlyList<TransferenciaDto> Enviadas { get; init; } = [];
-    public IReadOnlyList<TransferenciaDto> Recibidas { get; init; } = [];
+    public PagedResult<TransferenciaDto> Results { get; init; } = new();
+    public TransferenciaListQuery Query { get; init; } = new();
 }
 
 public sealed class TransferenciasTablaViewModel
 {
     public IReadOnlyList<TransferenciaDto> Transferencias { get; init; } = [];
-    public bool EsEnviadas { get; init; }
+}
+
+public sealed class ComprasIndexViewModel
+{
+    public PagedResult<CompraResumenDto> Results { get; init; } = new();
+    public CompraListQuery Query { get; init; } = new();
+}
+
+public sealed class EntradasIndexViewModel
+{
+    public PagedResult<EntradaResumenDto> Results { get; init; } = new();
+    public EntradaListQuery Query { get; init; } = new();
+}
+
+public sealed class FuncionarioIndexViewModel
+{
+    public IReadOnlyList<FuncionarioEventoAsignadoViewModel> EventosActivos { get; init; } = [];
+    public IReadOnlyList<FuncionarioEventoAsignadoViewModel> Historial { get; init; } = [];
+}
+
+public sealed class FuncionarioEventoAsignadoViewModel
+{
+    public ulong IdEvento { get; init; }
+    public DateTime FechaEvento { get; init; }
+    public string Evento { get; init; } = string.Empty;
+    public string Estadio { get; init; } = string.Empty;
+    public string EstadoEvento { get; init; } = string.Empty;
+    public IReadOnlyList<FuncionarioSectorResumenViewModel> Sectores { get; init; } = [];
+    public int TotalValidaciones => Sectores.Sum(sector => sector.EntradasValidadas);
+    public DateTime? UltimaValidacion => Sectores.Where(sector => sector.UltimaValidacion.HasValue).Max(sector => sector.UltimaValidacion);
+}
+
+public sealed class FuncionarioSectorResumenViewModel
+{
+    public ulong IdSector { get; init; }
+    public string Nombre { get; init; } = string.Empty;
+    public int EntradasValidadas { get; init; }
+    public DateTime? UltimaValidacion { get; init; }
 }
 
 public sealed class AsignarFuncionarioViewModel

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicketingMundial.Application.Abstractions.Services;
+using TicketingMundial.Application.DTOs;
 using TicketingMundial.Domain.Identity;
 using TicketingMundial.Infrastructure.Errors;
 using TicketingMundial.Web.Extensions;
@@ -12,13 +13,12 @@ namespace TicketingMundial.Web.Controllers;
 public sealed class TransferenciasController(IOperativaService operativaService) : Controller
 {
     [HttpGet("/Transferencias")]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index([FromQuery] TransferenciaListQuery query, CancellationToken cancellationToken)
     {
-        var doc = GetDocumento();
         return View(new TransferenciasIndexViewModel
         {
-            Enviadas = await operativaService.ListarTransferenciasEnviadasAsync(doc, cancellationToken),
-            Recibidas = await operativaService.ListarTransferenciasRecibidasAsync(doc, cancellationToken)
+            Query = query,
+            Results = await operativaService.ListarTransferenciasAsync(GetDocumento(), query, cancellationToken)
         });
     }
 

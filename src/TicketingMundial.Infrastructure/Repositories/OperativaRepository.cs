@@ -117,21 +117,79 @@ public sealed class OperativaRepository(
     public async Task<IReadOnlyList<CompraResumenDto>> ListarComprasAsync(DocumentoUsuario comprador, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT v.IDVenta, v.FechaVenta, v.EstadoVenta, v.MontoTotal, v.PorcentajeComision,
-                   COUNT(en.IDEntrada) AS CantidadEntradas,
-                   GROUP_CONCAT(DISTINCT CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) SEPARATOR ', ') AS Eventos
-            FROM Venta v
-            INNER JOIN Entrada en ON en.IDVenta = v.IDVenta
-            INNER JOIN Evento ev ON ev.IDEvento = en.IDEvento
-            LEFT JOIN EventoLocal l ON l.IDEvento = ev.IDEvento
-            LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
-            LEFT JOIN EventoVisita vi ON vi.IDEvento = ev.IDEvento
-            LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
-            WHERE v.TipoDocUsuario = @TipoDocumento AND v.PaisDocUsuario = @PaisDocumento AND v.NumeroUsuario = @Numero
-            GROUP BY v.IDVenta, v.FechaVenta, v.EstadoVenta, v.MontoTotal, v.PorcentajeComision
-            ORDER BY v.FechaVenta DESC;
+            WITH base AS (
+                SELECT v.IDVenta, v.FechaVenta, v.EstadoVenta, v.MontoTotal, v.PorcentajeComision,
+                       COUNT(en.IDEntrada) AS CantidadEntradas,
+                       GROUP_CONCAT(DISTINCT CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) SEPARATOR ', ') AS Eventos
+                FROM Venta v
+                INNER JOIN Entrada en ON en.IDVenta = v.IDVenta
+                INNER JOIN Evento ev ON ev.IDEvento = en.IDEvento
+                LEFT JOIN EventoLocal l ON l.IDEvento = ev.IDEvento
+                LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
+                LEFT JOIN EventoVisita vi ON vi.IDEvento = ev.IDEvento
+                LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
+                WHERE v.TipoDocUsuario = @TipoDocumento AND v.PaisDocUsuario = @PaisDocumento AND v.NumeroUsuario = @Numero
+                GROUP BY v.IDVenta, v.FechaVenta, v.EstadoVenta, v.MontoTotal, v.PorcentajeComision
+            )
+            SELECT ROW_NUMBER() OVER (ORDER BY FechaVenta ASC, IDVenta ASC) AS NumeroVisual,
+                   IDVenta, FechaVenta, EstadoVenta, MontoTotal, PorcentajeComision, CantidadEntradas, Eventos
+            FROM base
+            ORDER BY FechaVenta DESC, IDVenta DESC;
             """;
         return await QueryListAsync(sql, cmd => AddDocumento(cmd, comprador), MapCompraResumen, "listar compras", cancellationToken);
+    }
+
+    public Task<PagedResult<CompraResumenDto>> ListarComprasAsync(DocumentoUsuario comprador, CompraListQuery query, CancellationToken cancellationToken)
+    {
+        var orderBy = query.Sort switch
+        {
+            "codigo" => "NumeroVisual",
+            "estado" => "EstadoVenta",
+            "entradas" => "CantidadEntradas",
+            "total" => "MontoTotal",
+            _ => "FechaVenta"
+        };
+        var direction = query.Direction == "asc" ? "ASC" : "DESC";
+        var tieBreak = orderBy == "FechaVenta" ? $", IDVenta {direction}" : ", FechaVenta DESC, IDVenta DESC";
+        var parameters = new List<MySqlParameter>();
+        var where = new StringBuilder("WHERE 1 = 1\n");
+        AddCompraFilters(where, parameters, query);
+
+        var sql = $"""
+            WITH base AS (
+                SELECT v.IDVenta, v.FechaVenta, v.EstadoVenta, v.MontoTotal, v.PorcentajeComision,
+                       COUNT(en.IDEntrada) AS CantidadEntradas,
+                       GROUP_CONCAT(DISTINCT CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) SEPARATOR ', ') AS Eventos
+                FROM Venta v
+                INNER JOIN Entrada en ON en.IDVenta = v.IDVenta
+                INNER JOIN Evento ev ON ev.IDEvento = en.IDEvento
+                LEFT JOIN EventoLocal l ON l.IDEvento = ev.IDEvento
+                LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
+                LEFT JOIN EventoVisita vi ON vi.IDEvento = ev.IDEvento
+                LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
+                WHERE v.TipoDocUsuario = @TipoDocumento AND v.PaisDocUsuario = @PaisDocumento AND v.NumeroUsuario = @Numero
+                GROUP BY v.IDVenta, v.FechaVenta, v.EstadoVenta, v.MontoTotal, v.PorcentajeComision
+            ),
+            numbered AS (
+                SELECT ROW_NUMBER() OVER (ORDER BY FechaVenta ASC, IDVenta ASC) AS NumeroVisual,
+                       IDVenta, FechaVenta, EstadoVenta, MontoTotal, PorcentajeComision, CantidadEntradas, Eventos
+                FROM base
+            ),
+            filtered AS (
+                SELECT *
+                FROM numbered
+                {where}
+            )
+            SELECT COUNT(*) OVER() AS TotalItems, NumeroVisual, IDVenta, FechaVenta, EstadoVenta, MontoTotal, PorcentajeComision, CantidadEntradas, Eventos
+            FROM filtered
+            ORDER BY {orderBy} {direction}{tieBreak}
+            LIMIT @Limit OFFSET @Offset;
+            """;
+        return QueryPagedWindowAsync(sql, cmd =>
+        {
+            AddDocumento(cmd, comprador);
+            AddParams(cmd, parameters);
+        }, MapCompraResumen, query.Page, query.PageSize, "listar compras", cancellationToken);
     }
 
     public async Task<CompraDetalleDto?> ObtenerCompraAsync(DocumentoUsuario comprador, ulong idVenta, CancellationToken cancellationToken)
@@ -172,24 +230,115 @@ public sealed class OperativaRepository(
     public Task<IReadOnlyList<EntradaResumenDto>> ListarEntradasPropiasAsync(DocumentoUsuario propietario, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT en.IDEntrada, ev.IDEvento, ev.FechaHora AS FechaEvento, ev.EstadoEvento,
-                   CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) AS Evento,
-                   est.Nombre AS Estadio, s.IDSector, s.NombreSector AS Sector,
-                   en.EstadoEntrada, en.Costo,
-                   (SELECT COUNT(*) FROM Transferencia t WHERE t.IDEntrada = en.IDEntrada AND t.Estado = 'ACEPTADA') AS TransferenciasAceptadas
-            FROM V_PropietarioActual p
-            INNER JOIN Entrada en ON en.IDEntrada = p.IDEntrada
-            INNER JOIN Evento ev ON ev.IDEvento = en.IDEvento
-            INNER JOIN Estadio est ON est.IDEstadio = ev.IDEstadio
-            INNER JOIN Sector s ON s.IDSector = en.IDSector
-            LEFT JOIN EventoLocal l ON l.IDEvento = ev.IDEvento
-            LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
-            LEFT JOIN EventoVisita vi ON vi.IDEvento = ev.IDEvento
-            LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
-            WHERE p.TipoDocumento = @TipoDocumento AND p.PaisDocumento = @PaisDocumento AND p.Numero = @Numero
-            ORDER BY ev.FechaHora DESC, en.IDEntrada;
+            WITH base AS (
+                SELECT en.IDEntrada, COALESCE(trec.FechaRespuesta, en.FechaEmision) AS FechaAdquisicion,
+                       ev.IDEvento, ev.FechaHora AS FechaEvento, ev.EstadoEvento,
+                       CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) AS Evento,
+                       est.Nombre AS Estadio, s.IDSector, s.NombreSector AS Sector,
+                       en.EstadoEntrada, en.Costo,
+                       (SELECT COUNT(*) FROM Transferencia t WHERE t.IDEntrada = en.IDEntrada AND t.Estado = 'ACEPTADA') AS TransferenciasAceptadas
+                FROM V_PropietarioActual p
+                INNER JOIN Entrada en ON en.IDEntrada = p.IDEntrada
+                INNER JOIN Evento ev ON ev.IDEvento = en.IDEvento
+                INNER JOIN Estadio est ON est.IDEstadio = ev.IDEstadio
+                INNER JOIN Sector s ON s.IDSector = en.IDSector
+                LEFT JOIN EventoLocal l ON l.IDEvento = ev.IDEvento
+                LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
+                LEFT JOIN EventoVisita vi ON vi.IDEvento = ev.IDEvento
+                LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
+                LEFT JOIN Transferencia trec
+                    ON trec.IDTransferencia = (
+                        SELECT t2.IDTransferencia
+                        FROM Transferencia t2
+                        WHERE t2.IDEntrada = en.IDEntrada
+                          AND t2.Estado = 'ACEPTADA'
+                          AND t2.TipoDocRecibe = p.TipoDocumento
+                          AND t2.PaisDocRecibe = p.PaisDocumento
+                          AND t2.NumeroRecibe = p.Numero
+                        ORDER BY t2.FechaRespuesta DESC, t2.IDTransferencia DESC
+                        LIMIT 1
+                    )
+                WHERE p.TipoDocumento = @TipoDocumento AND p.PaisDocumento = @PaisDocumento AND p.Numero = @Numero
+            )
+            SELECT ROW_NUMBER() OVER (ORDER BY FechaAdquisicion ASC, IDEntrada ASC) AS NumeroVisual,
+                   IDEntrada, FechaAdquisicion, IDEvento, FechaEvento, EstadoEvento, Evento, Estadio, IDSector, Sector,
+                   EstadoEntrada, Costo, TransferenciasAceptadas
+            FROM base
+            ORDER BY FechaAdquisicion DESC, IDEntrada DESC;
             """;
         return QueryListAsync(sql, cmd => AddDocumento(cmd, propietario), MapEntradaResumen, "listar entradas propias", cancellationToken);
+    }
+
+    public Task<PagedResult<EntradaResumenDto>> ListarEntradasPropiasAsync(DocumentoUsuario propietario, EntradaListQuery query, CancellationToken cancellationToken)
+    {
+        var orderBy = query.Sort switch
+        {
+            "codigo" => "NumeroVisual",
+            "fecha-evento" => "FechaEvento",
+            "evento" => "Evento",
+            "estadio" => "Estadio",
+            "sector" => "Sector",
+            "estado" => "EstadoEntrada",
+            _ => "FechaAdquisicion"
+        };
+        var direction = query.Direction == "asc" ? "ASC" : "DESC";
+        var parameters = new List<MySqlParameter>();
+        var where = new StringBuilder("WHERE 1 = 1\n");
+        AddEntradaFilters(where, parameters, query);
+
+        var sql = $"""
+            WITH base AS (
+                SELECT en.IDEntrada, COALESCE(trec.FechaRespuesta, en.FechaEmision) AS FechaAdquisicion,
+                       ev.IDEvento, ev.FechaHora AS FechaEvento, ev.EstadoEvento,
+                       CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) AS Evento,
+                       est.Nombre AS Estadio, s.IDSector, s.NombreSector AS Sector,
+                       en.EstadoEntrada, en.Costo,
+                       (SELECT COUNT(*) FROM Transferencia t WHERE t.IDEntrada = en.IDEntrada AND t.Estado = 'ACEPTADA') AS TransferenciasAceptadas
+                FROM V_PropietarioActual p
+                INNER JOIN Entrada en ON en.IDEntrada = p.IDEntrada
+                INNER JOIN Evento ev ON ev.IDEvento = en.IDEvento
+                INNER JOIN Estadio est ON est.IDEstadio = ev.IDEstadio
+                INNER JOIN Sector s ON s.IDSector = en.IDSector
+                LEFT JOIN EventoLocal l ON l.IDEvento = ev.IDEvento
+                LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
+                LEFT JOIN EventoVisita vi ON vi.IDEvento = ev.IDEvento
+                LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
+                LEFT JOIN Transferencia trec
+                    ON trec.IDTransferencia = (
+                        SELECT t2.IDTransferencia
+                        FROM Transferencia t2
+                        WHERE t2.IDEntrada = en.IDEntrada
+                          AND t2.Estado = 'ACEPTADA'
+                          AND t2.TipoDocRecibe = p.TipoDocumento
+                          AND t2.PaisDocRecibe = p.PaisDocumento
+                          AND t2.NumeroRecibe = p.Numero
+                        ORDER BY t2.FechaRespuesta DESC, t2.IDTransferencia DESC
+                        LIMIT 1
+                    )
+                WHERE p.TipoDocumento = @TipoDocumento AND p.PaisDocumento = @PaisDocumento AND p.Numero = @Numero
+            ),
+            numbered AS (
+                SELECT ROW_NUMBER() OVER (ORDER BY FechaAdquisicion ASC, IDEntrada ASC) AS NumeroVisual,
+                       IDEntrada, FechaAdquisicion, IDEvento, FechaEvento, EstadoEvento, Evento, Estadio, IDSector, Sector,
+                       EstadoEntrada, Costo, TransferenciasAceptadas
+                FROM base
+            ),
+            filtered AS (
+                SELECT *
+                FROM numbered
+                {where}
+            )
+            SELECT COUNT(*) OVER() AS TotalItems, NumeroVisual, IDEntrada, FechaAdquisicion, IDEvento, FechaEvento, EstadoEvento,
+                   Evento, Estadio, IDSector, Sector, EstadoEntrada, Costo, TransferenciasAceptadas
+            FROM filtered
+            ORDER BY {orderBy} {direction}, IDEntrada {direction}
+            LIMIT @Limit OFFSET @Offset;
+            """;
+        return QueryPagedWindowAsync(sql, cmd =>
+        {
+            AddDocumento(cmd, propietario);
+            AddParams(cmd, parameters);
+        }, MapEntradaResumen, query.Page, query.PageSize, "listar entradas propias", cancellationToken);
     }
 
     public async Task<EntradaResumenDto?> ObtenerEntradaPropiaAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) =>
@@ -296,6 +445,63 @@ public sealed class OperativaRepository(
     public Task<IReadOnlyList<TransferenciaDto>> ListarTransferenciasRecibidasAsync(DocumentoUsuario usuario, CancellationToken cancellationToken) =>
         ListarTransferenciasAsync(usuario, false, cancellationToken);
 
+    public Task<PagedResult<TransferenciaDto>> ListarTransferenciasAsync(DocumentoUsuario usuario, TransferenciaListQuery query, CancellationToken cancellationToken)
+    {
+        var orderBy = query.Sort switch
+        {
+            "codigo" => "NumeroVisual",
+            "respuesta" => "FechaRespuesta",
+            "persona" => "Persona",
+            "evento" => "Evento",
+            "estado" => "EstadoTransferencia",
+            _ => "FechaSolicitud"
+        };
+        var direction = query.Direction == "asc" ? "ASC" : "DESC";
+        var parameters = new List<MySqlParameter>();
+        var where = new StringBuilder("WHERE 1 = 1\n");
+        AddTransferenciaFilters(where, parameters, query);
+
+        var sql = $"""
+            WITH visibles AS (
+                SELECT vt.IDTransferencia, vt.IDEntrada, vt.FechaSolicitud, vt.FechaRespuesta, vt.EstadoTransferencia,
+                       vt.UsuarioOtorga, vt.CorreoOtorga, vt.UsuarioRecibe, vt.CorreoRecibe,
+                       CONCAT(COALESCE(eloc.Pais, 'Local'), ' vs ', COALESCE(evis.Pais, 'Visitante')) AS Evento,
+                       vt.FechaEvento, vt.Estadio, vt.NombreSector,
+                       CASE WHEN vt.DocumentoOtorga = CONCAT(@TipoDocumento, ' ', @Numero) THEN 1 ELSE 0 END AS EsEnviada,
+                       CASE WHEN vt.DocumentoOtorga = CONCAT(@TipoDocumento, ' ', @Numero) THEN vt.CorreoRecibe ELSE vt.CorreoOtorga END AS Persona
+                FROM V_Transferencias vt
+                LEFT JOIN EventoLocal l ON l.IDEvento = vt.IDEvento
+                LEFT JOIN Equipo eloc ON eloc.IDEquipo = l.IDEquipo
+                LEFT JOIN EventoVisita vi ON vi.IDEvento = vt.IDEvento
+                LEFT JOIN Equipo evis ON evis.IDEquipo = vi.IDEquipo
+                WHERE vt.DocumentoOtorga = CONCAT(@TipoDocumento, ' ', @Numero)
+                   OR vt.DocumentoRecibe = CONCAT(@TipoDocumento, ' ', @Numero)
+            ),
+            numbered AS (
+                SELECT ROW_NUMBER() OVER (ORDER BY FechaSolicitud ASC, IDTransferencia ASC) AS NumeroVisual,
+                       IDTransferencia, IDEntrada, FechaSolicitud, FechaRespuesta, EstadoTransferencia, UsuarioOtorga,
+                       CorreoOtorga, UsuarioRecibe, CorreoRecibe, Evento, FechaEvento, Estadio, NombreSector, EsEnviada, Persona
+                FROM visibles
+            ),
+            filtered AS (
+                SELECT *
+                FROM numbered
+                {where}
+            )
+            SELECT COUNT(*) OVER() AS TotalItems, NumeroVisual, IDTransferencia, IDEntrada, FechaSolicitud, FechaRespuesta,
+                   EstadoTransferencia, UsuarioOtorga, CorreoOtorga, UsuarioRecibe, CorreoRecibe, Evento, FechaEvento,
+                   Estadio, NombreSector, EsEnviada
+            FROM filtered
+            ORDER BY {orderBy} {direction}, IDTransferencia {direction}
+            LIMIT @Limit OFFSET @Offset;
+            """;
+        return QueryPagedWindowAsync(sql, cmd =>
+        {
+            AddDocumento(cmd, usuario);
+            AddParams(cmd, parameters);
+        }, MapTransferencia, query.Page, query.PageSize, "listar transferencias", cancellationToken);
+    }
+
     public async Task<bool> ResponderTransferenciaAsync(DocumentoUsuario usuario, ulong idTransferencia, string estado, bool receptor, CancellationToken cancellationToken)
     {
         var columnPrefix = receptor ? "Recibe" : "Otorga";
@@ -389,7 +595,17 @@ public sealed class OperativaRepository(
     {
         const string sql = """
             SELECT v.TipoDocumento, v.PaisDocumento, v.Numero, v.Funcionario, v.NumLegajo, v.EntradasValidadas,
-                   v.IDEvento, v.FechaEvento, ev.EstadoEvento, v.IDSector, v.NombreSector, ev.Estadio
+                   v.IDEvento, v.FechaEvento,
+                   CONCAT(COALESCE(ev.EquipoLocal, 'Local'), ' vs ', COALESCE(ev.EquipoVisitante, 'Visitante')) AS Evento,
+                   ev.EstadoEvento, v.IDSector, v.NombreSector, ev.Estadio,
+                   (SELECT MAX(val.FechaHoraValidacion)
+                    FROM Validacion val
+                    INNER JOIN Entrada en ON en.IDEntrada = val.IDEntrada
+                    WHERE en.IDEvento = v.IDEvento
+                      AND en.IDSector = v.IDSector
+                      AND val.TipoDocFuncionario = v.TipoDocumento
+                      AND val.PaisDocFuncionario = v.PaisDocumento
+                      AND val.NumeroFuncionario = v.Numero) AS UltimaValidacion
             FROM V_ValidacionesPorFuncionario v
             INNER JOIN V_Eventos ev ON ev.IDEvento = v.IDEvento
             WHERE ev.PaisEstadio = @PaisSede
@@ -514,7 +730,17 @@ public sealed class OperativaRepository(
     {
         const string sql = """
             SELECT v.TipoDocumento, v.PaisDocumento, v.Numero, v.Funcionario, v.NumLegajo, v.EntradasValidadas,
-                   v.IDEvento, v.FechaEvento, ev.EstadoEvento, v.IDSector, v.NombreSector, ev.Estadio
+                   v.IDEvento, v.FechaEvento,
+                   CONCAT(COALESCE(ev.EquipoLocal, 'Local'), ' vs ', COALESCE(ev.EquipoVisitante, 'Visitante')) AS Evento,
+                   ev.EstadoEvento, v.IDSector, v.NombreSector, ev.Estadio,
+                   (SELECT MAX(val.FechaHoraValidacion)
+                    FROM Validacion val
+                    INNER JOIN Entrada en ON en.IDEntrada = val.IDEntrada
+                    WHERE en.IDEvento = v.IDEvento
+                      AND en.IDSector = v.IDSector
+                      AND val.TipoDocFuncionario = v.TipoDocumento
+                      AND val.PaisDocFuncionario = v.PaisDocumento
+                      AND val.NumeroFuncionario = v.Numero) AS UltimaValidacion
             FROM V_ValidacionesPorFuncionario v
             INNER JOIN V_Eventos ev ON ev.IDEvento = v.IDEvento
             WHERE v.TipoDocumento = @TipoDocumento AND v.PaisDocumento = @PaisDocumento AND v.Numero = @Numero
@@ -1029,6 +1255,39 @@ public sealed class OperativaRepository(
         catch (MySqlException ex) { throw exceptionTranslator.Translate(ex, op); }
     }
 
+    private async Task<PagedResult<T>> QueryPagedWindowAsync<T>(
+        string sql,
+        Action<MySqlCommand> addParameters,
+        Func<MySqlDataReader, T> map,
+        int page,
+        int pageSize,
+        string op,
+        CancellationToken ct)
+    {
+        try
+        {
+            await using var c = await connectionFactory.OpenAsync(ct);
+            await using var cmd = new MySqlCommand(sql, c);
+            addParameters(cmd);
+            cmd.Parameters.Add("@Limit", MySqlDbType.Int32).Value = pageSize;
+            cmd.Parameters.Add("@Offset", MySqlDbType.Int32).Value = (page - 1) * pageSize;
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            var items = new List<T>();
+            var total = 0;
+            while (await r.ReadAsync(ct))
+            {
+                if (total == 0)
+                {
+                    total = Convert.ToInt32(r.GetValue(r.GetOrdinal("TotalItems")));
+                }
+                items.Add(map(r));
+            }
+
+            return new PagedResult<T> { Items = items, Page = page, PageSize = pageSize, TotalItems = total };
+        }
+        catch (MySqlException ex) { throw exceptionTranslator.Translate(ex, op); }
+    }
+
     private async Task<T?> QuerySingleAsync<T>(string sql, Action<MySqlCommand> addParameters, Func<MySqlDataReader, T> map, string op, CancellationToken ct)
     {
         var list = await QueryListAsync(sql, addParameters, map, op, ct);
@@ -1083,6 +1342,114 @@ public sealed class OperativaRepository(
         foreach (var p in parameters) cmd.Parameters.Add(p);
     }
 
+    private static void AddCompraFilters(StringBuilder where, List<MySqlParameter> parameters, CompraListQuery query)
+    {
+        if (!string.IsNullOrWhiteSpace(query.Busqueda))
+        {
+            where.AppendLine("AND (Eventos LIKE @Busqueda ESCAPE '\\\\' OR CONCAT('VENT-', LPAD(NumeroVisual, 3, '0')) LIKE @Busqueda ESCAPE '\\\\')");
+            parameters.Add(CreateLikeParameter("@Busqueda", query.Busqueda));
+        }
+        if (!string.IsNullOrWhiteSpace(query.Evento))
+        {
+            where.AppendLine("AND Eventos LIKE @Evento ESCAPE '\\\\'");
+            parameters.Add(CreateLikeParameter("@Evento", query.Evento));
+        }
+        if (!string.IsNullOrWhiteSpace(query.Estado))
+        {
+            where.AppendLine("AND EstadoVenta = @Estado");
+            parameters.Add(new MySqlParameter("@Estado", MySqlDbType.VarChar, 20) { Value = query.Estado });
+        }
+        if (query.Desde.HasValue)
+        {
+            where.AppendLine("AND FechaVenta >= @Desde");
+            parameters.Add(new MySqlParameter("@Desde", MySqlDbType.DateTime) { Value = query.Desde.Value });
+        }
+        if (query.Hasta.HasValue)
+        {
+            where.AppendLine("AND FechaVenta <= @Hasta");
+            parameters.Add(new MySqlParameter("@Hasta", MySqlDbType.DateTime) { Value = NormalizeInclusiveHasta(query.Hasta.Value) });
+        }
+    }
+
+    private static void AddEntradaFilters(StringBuilder where, List<MySqlParameter> parameters, EntradaListQuery query)
+    {
+        if (!string.IsNullOrWhiteSpace(query.Busqueda))
+        {
+            where.AppendLine("AND (Evento LIKE @Busqueda ESCAPE '\\\\' OR Estadio LIKE @Busqueda ESCAPE '\\\\' OR Sector LIKE @Busqueda ESCAPE '\\\\')");
+            parameters.Add(CreateLikeParameter("@Busqueda", query.Busqueda));
+        }
+        if (!string.IsNullOrWhiteSpace(query.Estado))
+        {
+            where.AppendLine("AND EstadoEntrada = @Estado");
+            parameters.Add(new MySqlParameter("@Estado", MySqlDbType.VarChar, 20) { Value = query.Estado });
+        }
+        AddRangeFilter(where, parameters, "FechaEvento", query.FechaEventoDesde, query.FechaEventoHasta, "@FechaEventoDesde", "@FechaEventoHasta");
+        AddRangeFilter(where, parameters, "FechaAdquisicion", query.FechaAdquisicionDesde, query.FechaAdquisicionHasta, "@FechaAdqDesde", "@FechaAdqHasta");
+    }
+
+    private static void AddTransferenciaFilters(StringBuilder where, List<MySqlParameter> parameters, TransferenciaListQuery query)
+    {
+        if (!string.IsNullOrWhiteSpace(query.Busqueda))
+        {
+            where.AppendLine("AND (Persona LIKE @Busqueda ESCAPE '\\\\' OR Evento LIKE @Busqueda ESCAPE '\\\\')");
+            parameters.Add(CreateLikeParameter("@Busqueda", query.Busqueda));
+        }
+        if (!string.IsNullOrWhiteSpace(query.Estado))
+        {
+            where.AppendLine("AND EstadoTransferencia = @Estado");
+            parameters.Add(new MySqlParameter("@Estado", MySqlDbType.VarChar, 20) { Value = query.Estado });
+        }
+        if (query.Tipo == "enviadas")
+        {
+            where.AppendLine("AND EsEnviada = 1");
+        }
+        else if (query.Tipo == "recibidas")
+        {
+            where.AppendLine("AND EsEnviada = 0");
+        }
+        AddRangeFilter(where, parameters, "FechaSolicitud", query.Desde, query.Hasta, "@Desde", "@Hasta");
+    }
+
+    private static void AddRangeFilter(
+        StringBuilder where,
+        List<MySqlParameter> parameters,
+        string column,
+        DateTime? desde,
+        DateTime? hasta,
+        string desdeName,
+        string hastaName)
+    {
+        if (desde.HasValue)
+        {
+            where.AppendLine($"AND {column} >= {desdeName}");
+            parameters.Add(new MySqlParameter(desdeName, MySqlDbType.DateTime) { Value = desde.Value });
+        }
+        if (hasta.HasValue)
+        {
+            where.AppendLine($"AND {column} <= {hastaName}");
+            parameters.Add(new MySqlParameter(hastaName, MySqlDbType.DateTime) { Value = NormalizeInclusiveHasta(hasta.Value) });
+        }
+    }
+
+    private static MySqlParameter CreateLikeParameter(string name, string value) =>
+        new(name, MySqlDbType.VarChar, 140) { Value = $"%{SqlSafety.EscapeLikePattern(value.Trim())}%" };
+
+    private static DateTime NormalizeInclusiveHasta(DateTime hasta) =>
+        hasta.TimeOfDay == TimeSpan.Zero ? hasta.Date.AddDays(1).AddTicks(-1) : hasta;
+
+    private static bool HasColumn(MySqlDataReader reader, string name)
+    {
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            if (string.Equals(reader.GetName(i), name, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static List<MySqlParameter> AddDateFilters(StringBuilder sql, DateTime? desde, DateTime? hasta, string column = "ev.FechaHora")
     {
         EnsureSqlLineBreak(sql);
@@ -1111,6 +1478,7 @@ public sealed class OperativaRepository(
     private static CompraResumenDto MapCompraResumen(MySqlDataReader r) => new()
     {
         IdVenta = r.GetUInt64Value("IDVenta"),
+        NumeroVisual = HasColumn(r, "NumeroVisual") ? Convert.ToInt32(r.GetValue(r.GetOrdinal("NumeroVisual"))) : 0,
         FechaVenta = r.GetDateTimeValue("FechaVenta"),
         EstadoVenta = r.GetRequiredString("EstadoVenta"),
         MontoTotal = r.GetDecimalValue("MontoTotal"),
@@ -1137,6 +1505,8 @@ public sealed class OperativaRepository(
     private static EntradaResumenDto MapEntradaResumen(MySqlDataReader r) => new()
     {
         IdEntrada = r.GetUInt64Value("IDEntrada"),
+        NumeroVisual = HasColumn(r, "NumeroVisual") ? Convert.ToInt32(r.GetValue(r.GetOrdinal("NumeroVisual"))) : 0,
+        FechaAdquisicion = HasColumn(r, "FechaAdquisicion") ? r.GetDateTimeValue("FechaAdquisicion") : DateTime.MinValue,
         IdEvento = r.GetUInt64Value("IDEvento"),
         FechaEvento = r.GetDateTimeValue("FechaEvento"),
         EstadoEvento = r.GetRequiredString("EstadoEvento"),
@@ -1166,6 +1536,7 @@ public sealed class OperativaRepository(
     private static TransferenciaDto MapTransferencia(MySqlDataReader r) => new()
     {
         IdTransferencia = r.GetUInt64Value("IDTransferencia"),
+        NumeroVisual = HasColumn(r, "NumeroVisual") ? Convert.ToInt32(r.GetValue(r.GetOrdinal("NumeroVisual"))) : 0,
         IdEntrada = r.GetUInt64Value("IDEntrada"),
         FechaSolicitud = r.GetDateTimeValue("FechaSolicitud"),
         FechaRespuesta = r.GetNullableDateTime("FechaRespuesta"),
@@ -1177,7 +1548,8 @@ public sealed class OperativaRepository(
         Evento = r.GetRequiredString("Evento"),
         FechaEvento = r.GetDateTimeValue("FechaEvento"),
         Estadio = r.GetRequiredString("Estadio"),
-        Sector = r.GetRequiredString("NombreSector")
+        Sector = r.GetRequiredString("NombreSector"),
+        EsEnviada = HasColumn(r, "EsEnviada") && Convert.ToInt32(r.GetValue(r.GetOrdinal("EsEnviada"))) == 1
     };
 
     private static FuncionarioDto MapFuncionario(MySqlDataReader r) => new()
@@ -1195,11 +1567,13 @@ public sealed class OperativaRepository(
         NumLegajo = r.GetRequiredString("NumLegajo"),
         IdEvento = r.GetUInt64Value("IDEvento"),
         FechaEvento = r.GetDateTimeValue("FechaEvento"),
+        Evento = HasColumn(r, "Evento") ? r.GetRequiredString("Evento") : string.Empty,
         EstadoEvento = r.GetRequiredString("EstadoEvento"),
         IdSector = r.GetUInt64Value("IDSector"),
         Sector = r.GetRequiredString("NombreSector"),
         Estadio = r.GetRequiredString("Estadio"),
-        EntradasValidadas = Convert.ToInt32(r.GetValue(r.GetOrdinal("EntradasValidadas")))
+        EntradasValidadas = Convert.ToInt32(r.GetValue(r.GetOrdinal("EntradasValidadas"))),
+        UltimaValidacion = HasColumn(r, "UltimaValidacion") ? r.GetNullableDateTime("UltimaValidacion") : null
     };
 
     private static ulong? GetNullableUInt64(MySqlDataReader reader, string name)

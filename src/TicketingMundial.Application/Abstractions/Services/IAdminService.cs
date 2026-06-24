@@ -8,19 +8,19 @@ public interface IAdminService
 {
     Task<AdministradorActualDto?> ObtenerAdministradorAsync(DocumentoUsuario documento, CancellationToken cancellationToken);
     Task<AdminDashboardDto> ObtenerDashboardAsync(DocumentoUsuario adminDocumento, CancellationToken cancellationToken);
-    Task<PagedResult<EstadioAdminDto>> ListarEstadiosAsync(DocumentoUsuario adminDocumento, string? busqueda, int page, int pageSize, CancellationToken cancellationToken);
+    Task<PagedResult<EstadioAdminDto>> ListarEstadiosAsync(DocumentoUsuario adminDocumento, string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken);
     Task<IReadOnlyList<EstadioAdminDto>> ListarEstadiosParaSeleccionAsync(DocumentoUsuario adminDocumento, CancellationToken cancellationToken);
     Task<EstadioAdminDto?> ObtenerEstadioAsync(DocumentoUsuario adminDocumento, ulong idEstadio, CancellationToken cancellationToken);
     Task<OperationResult<ulong>> GuardarEstadioAsync(DocumentoUsuario adminDocumento, EstadioUpsertCommand command, CancellationToken cancellationToken);
-    Task<PagedResult<SectorAdminDto>> ListarSectoresAsync(DocumentoUsuario adminDocumento, ulong? idEstadio, string? busqueda, int page, int pageSize, CancellationToken cancellationToken);
+    Task<PagedResult<SectorAdminDto>> ListarSectoresAsync(DocumentoUsuario adminDocumento, ulong? idEstadio, string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken);
     Task<IReadOnlyList<SectorAdminDto>> ListarSectoresPorEstadioAsync(DocumentoUsuario adminDocumento, ulong idEstadio, CancellationToken cancellationToken);
     Task<SectorAdminDto?> ObtenerSectorAsync(DocumentoUsuario adminDocumento, ulong idSector, CancellationToken cancellationToken);
     Task<OperationResult<ulong>> GuardarSectorAsync(DocumentoUsuario adminDocumento, SectorUpsertCommand command, CancellationToken cancellationToken);
-    Task<PagedResult<EquipoAdminDto>> ListarEquiposAsync(string? busqueda, int page, int pageSize, CancellationToken cancellationToken);
+    Task<PagedResult<EquipoAdminDto>> ListarEquiposAsync(string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken);
     Task<IReadOnlyList<EquipoAdminDto>> ListarEquiposParaSeleccionAsync(CancellationToken cancellationToken);
     Task<EquipoAdminDto?> ObtenerEquipoAsync(ulong idEquipo, CancellationToken cancellationToken);
     Task<OperationResult<ulong>> GuardarEquipoAsync(EquipoUpsertCommand command, CancellationToken cancellationToken);
-    Task<PagedResult<EventoAdminDto>> ListarEventosAsync(DocumentoUsuario adminDocumento, int page, int pageSize, CancellationToken cancellationToken);
+    Task<PagedResult<EventoAdminDto>> ListarEventosAsync(DocumentoUsuario adminDocumento, string? busqueda, string? estado, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken);
     Task<IReadOnlyList<EventoAdminDto>> ListarEventosAsignablesAsync(DocumentoUsuario adminDocumento, CancellationToken cancellationToken);
     Task<EventoAdminDto?> ObtenerEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, CancellationToken cancellationToken);
     Task<IReadOnlyList<EventoSectorAdminDto>> ListarSectoresHabilitadosEventoAsync(DocumentoUsuario adminDocumento, ulong idEvento, CancellationToken cancellationToken);

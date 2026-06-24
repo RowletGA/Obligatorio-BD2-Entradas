@@ -61,11 +61,9 @@
                 }
                 else if (perfilActivo == RolesAplicacion.Funcionario)
                 {
-                    <a asp-controller="Funcionario" asp-action="Index">Dashboard</a>
                     <a asp-controller="Funcionario" asp-action="Index">Eventos asignados</a>
-                    <a asp-controller="Funcionario" asp-action="Index">Sectores asignados</a>
                     <a asp-controller="Funcionario" asp-action="Escanear">Escanear entradas</a>
-                    <a asp-controller="Funcionario" asp-action="Index">Historial de validaciones</a>
+                    <a asp-controller="Funcionario" asp-action="Index" asp-fragment="historial">Historial</a>
                 }
                 else
                 {
@@ -106,6 +104,12 @@
                     {
                         <a asp-controller="Compras" asp-action="Index">Mis compras</a>
                         <a asp-controller="Entradas" asp-action="MisEntradas">Mis entradas</a>
+                    }
+                    else if (perfilActivo == RolesAplicacion.Funcionario)
+                    {
+                        <a asp-controller="Funcionario" asp-action="Index">Eventos asignados</a>
+                        <a asp-controller="Funcionario" asp-action="Escanear">Escanear entradas</a>
+                        <a asp-controller="Funcionario" asp-action="Index" asp-fragment="historial">Historial</a>
                     }
                     @if (tieneMultiplesPerfiles)
                     {

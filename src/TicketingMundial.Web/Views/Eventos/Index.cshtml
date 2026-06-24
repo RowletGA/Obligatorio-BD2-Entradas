@@ -47,6 +47,10 @@
             <input id="equipo" name="equipo" class="form-control" value="@Model.Equipo" />
         </div>
         <div class="col-12 col-md-6 col-xl-2">
+            <label for="idSector" class="form-label">Sector habilitado</label>
+            <input id="idSector" name="idSector" type="number" min="1" class="form-control" value="@Model.IdSector" />
+        </div>
+        <div class="col-12 col-md-6 col-xl-2">
             <label for="estado" class="form-label">Estado</label>
             <select id="estado" name="estado" class="form-select">
                 <option value="">Todos</option>
@@ -54,6 +58,24 @@
                 {
                     <option value="@estado" selected="@(Model.Estado == estado)">@estado</option>
                 }
+            </select>
+        </div>
+        <div class="col-12 col-md-6 col-xl-2">
+            <label for="sort" class="form-label">Ordenar por</label>
+            <select id="sort" name="sort" class="form-select">
+                <option value="fecha" selected="@(Model.Sort is null or "fecha")">Fecha</option>
+                <option value="local" selected="@(Model.Sort == "local")">Equipo local</option>
+                <option value="visitante" selected="@(Model.Sort == "visitante")">Equipo visitante</option>
+                <option value="estadio" selected="@(Model.Sort == "estadio")">Estadio</option>
+                <option value="estado" selected="@(Model.Sort == "estado")">Estado</option>
+                <option value="disponibilidad" selected="@(Model.Sort == "disponibilidad")">Disponibilidad</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-6 col-xl-2">
+            <label for="direction" class="form-label">Dirección</label>
+            <select id="direction" name="direction" class="form-select">
+                <option value="desc" selected="@(Model.Direction != "asc")">Descendente</option>
+                <option value="asc" selected="@(Model.Direction == "asc")">Ascendente</option>
             </select>
         </div>
         <div class="col-12 col-xl-1 d-grid">
@@ -76,21 +98,13 @@ else
             var local = CountryDisplayHelper.FromCode(evento.EquipoLocal);
             var visitante = CountryDisplayHelper.FromCode(evento.EquipoVisitante);
             var cerrado = evento.Estado is "FINALIZADO" or "CANCELADO";
-            var estadoClase = evento.Estado switch
-            {
-                "PROGRAMADO" => "text-bg-primary",
-                "EN_CURSO" => "text-bg-success",
-                "FINALIZADO" => "text-bg-dark",
-                "CANCELADO" => "text-bg-danger",
-                _ => "text-bg-secondary"
-            };
             <article class="event-match-card">
                 <div class="d-flex justify-content-between gap-3 align-items-start">
                     <div>
                         <div class="event-date">@evento.FechaHora.ToString("dd/MM/yyyy")</div>
                         <div class="text-secondary small">@evento.FechaHora.ToString("HH:mm")</div>
                     </div>
-                    <span class="badge @estadoClase">@(cerrado ? (evento.Estado == "FINALIZADO" ? "Finalizado" : "Cancelado") : evento.Estado)</span>
+                    <span class="@StatusBadgeHelper.Evento(evento.Estado)">@(cerrado ? (evento.Estado == "FINALIZADO" ? "Finalizado" : "Cancelado") : evento.Estado)</span>
                 </div>
 
                 <div class="event-teams">

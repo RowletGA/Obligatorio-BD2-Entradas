@@ -9,6 +9,9 @@ public sealed class AdminListViewModel<T>
     public PagedResult<T> Results { get; init; } = new();
     public string? Busqueda { get; init; }
     public ulong? IdEstadio { get; init; }
+    public string? Sort { get; init; }
+    public string? Direction { get; init; }
+    public int PageSize { get; init; } = 10;
     public IReadOnlyList<SelectListItem> Estadios { get; init; } = [];
 }
 

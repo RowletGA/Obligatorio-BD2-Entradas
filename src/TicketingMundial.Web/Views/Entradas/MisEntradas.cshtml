@@ -1,9 +1,42 @@
-@model IReadOnlyList<EntradaResumenDto>
-@{ ViewData["Title"] = "Mis entradas"; }
+@model EntradasIndexViewModel
+@{
+    ViewData["Title"] = "Mis entradas";
+    var q = Model.Query;
+    string SortUrl(string sort)
+    {
+        var direction = q.Sort == sort && q.Direction != "asc" ? "asc" : "desc";
+        return Url.Action("MisEntradas", new
+        {
+            q.Busqueda,
+            q.Estado,
+            q.FechaEventoDesde,
+            q.FechaEventoHasta,
+            q.FechaAdquisicionDesde,
+            q.FechaAdquisicionHasta,
+            sort,
+            direction,
+            page = Model.Results.Page,
+            q.PageSize
+        }) ?? "#";
+    }
+    string Indicator(string sort) => q.Sort == sort ? (q.Direction == "asc" ? " ↑" : " ↓") : string.Empty;
+}
 <section class="page-heading"><p class="section-kicker">Usuario</p><h1>Mis entradas</h1></section>
+<section class="content-panel mb-3">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-12 col-lg-3"><label class="form-label">Buscar</label><input name="Busqueda" value="@q.Busqueda" class="form-control" maxlength="100" placeholder="Evento, estadio o sector" /></div>
+        <div class="col-12 col-md-4 col-lg-2"><label class="form-label">Estado</label><select name="Estado" class="form-select"><option value="">Todos</option><option value="ACTIVA" selected="@(q.Estado == "ACTIVA")">ACTIVA</option><option value="VALIDADA" selected="@(q.Estado == "VALIDADA")">VALIDADA</option><option value="TRANSFERIDA" selected="@(q.Estado == "TRANSFERIDA")">TRANSFERIDA</option><option value="ANULADA" selected="@(q.Estado == "ANULADA")">ANULADA</option></select></div>
+        <div class="col-12 col-md-4 col-lg-2"><label class="form-label">Evento desde</label><input name="FechaEventoDesde" type="date" value="@q.FechaEventoDesde?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+        <div class="col-12 col-md-4 col-lg-2"><label class="form-label">Adquirida desde</label><input name="FechaAdquisicionDesde" type="date" value="@q.FechaAdquisicionDesde?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+        <div class="col-6 col-lg-1"><label class="form-label">Tamaño</label><select name="PageSize" class="form-select"><option selected="@(Model.Results.PageSize == 10)">10</option><option selected="@(Model.Results.PageSize == 25)">25</option><option selected="@(Model.Results.PageSize == 50)">50</option></select></div>
+        <input type="hidden" name="Sort" value="@q.Sort" /><input type="hidden" name="Direction" value="@q.Direction" />
+        <div class="col-6 col-lg-2 d-grid"><button class="btn btn-primary">Aplicar</button></div>
+    </form>
+</section>
 <section class="content-panel">
-@if (Model.Count == 0) { <p class="text-secondary mb-0">No tenés entradas propias.</p> }
-else { <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Entrada</th><th>Evento</th><th>Fecha</th><th>Sector</th><th>Entrada</th><th>Evento</th><th></th></tr></thead><tbody>
-@for (var i = 0; i < Model.Count; i++) { var e = Model[i]; var badge = e.EstadoEntrada == "VALIDADA" ? "text-bg-success" : e.EstadoEntrada == "ANULADA" ? "text-bg-danger" : "text-bg-secondary"; <tr><td>@($"ENT-{i + 1:000}")</td><td>@e.Evento</td><td>@e.FechaEvento.ToString("dd/MM/yyyy HH:mm")</td><td>@e.Sector</td><td><span class="badge @badge">@e.EstadoEntrada</span></td><td>@e.EstadoEvento</td><td><a asp-action="Detalle" asp-route-id="@e.IdEntrada">Ver</a></td></tr> }
+@if (Model.Results.Items.Count == 0) { <p class="text-secondary mb-0">No tenés entradas propias para los filtros actuales.</p> }
+else { <div class="table-responsive"><table class="table align-middle"><thead><tr><th><a class="sortable-link" href="@SortUrl("codigo")">@($"Código{Indicator("codigo")}")</a></th><th><a class="sortable-link" href="@SortUrl("evento")">@($"Evento{Indicator("evento")}")</a></th><th><a class="sortable-link" href="@SortUrl("fecha-adquisicion")">@($"Adquisición{Indicator("fecha-adquisicion")}")</a></th><th><a class="sortable-link" href="@SortUrl("fecha-evento")">@($"Fecha evento{Indicator("fecha-evento")}")</a></th><th><a class="sortable-link" href="@SortUrl("estadio")">@($"Estadio{Indicator("estadio")}")</a></th><th><a class="sortable-link" href="@SortUrl("sector")">@($"Sector{Indicator("sector")}")</a></th><th><a class="sortable-link" href="@SortUrl("estado")">@($"Estado{Indicator("estado")}")</a></th><th></th></tr></thead><tbody>
+@foreach (var e in Model.Results.Items) { <tr><td>@VisualCodeFormatter.Entrada(e.NumeroVisual)</td><td>@e.Evento</td><td>@e.FechaAdquisicion.ToString("dd/MM/yyyy HH:mm")</td><td>@e.FechaEvento.ToString("dd/MM/yyyy HH:mm")</td><td>@e.Estadio</td><td>@e.Sector</td><td><span class="@StatusBadgeHelper.Entrada(e.EstadoEntrada)">@e.EstadoEntrada</span></td><td><a asp-action="Detalle" asp-route-id="@e.IdEntrada">Ver</a></td></tr> }
 </tbody></table></div> }
+@if (Model.Results.TotalPages > 1) { <div class="d-flex justify-content-between align-items-center mt-3"><span class="text-secondary">Página @Model.Results.Page de @Model.Results.TotalPages</span><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page <= 1 ? "disabled" : null)" href="@Url.Action("MisEntradas", new { q.Busqueda, q.Estado, q.FechaEventoDesde, q.FechaEventoHasta, q.FechaAdquisicionDesde, q.FechaAdquisicionHasta, q.Sort, q.Direction, page = Model.Results.Page - 1, q.PageSize })">Anterior</a><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page >= Model.Results.TotalPages ? "disabled" : null)" href="@Url.Action("MisEntradas", new { q.Busqueda, q.Estado, q.FechaEventoDesde, q.FechaEventoHasta, q.FechaAdquisicionDesde, q.FechaAdquisicionHasta, q.Sort, q.Direction, page = Model.Results.Page + 1, q.PageSize })">Siguiente</a></div></div> }
 </section>

@@ -1,6 +1,12 @@
 @model AdminListViewModel<EstadioAdminDto>
 @{
     ViewData["Title"] = "Estadios";
+    string SortUrl(string sort)
+    {
+        var direction = Model.Sort == sort && Model.Direction != "asc" ? "asc" : "desc";
+        return Url.Action("Estadios", new { q = Model.Busqueda, sort, direction, page = Model.Results.Page, pageSize = Model.Results.PageSize }) ?? "#";
+    }
+    string Indicator(string sort) => Model.Sort == sort ? (Model.Direction == "asc" ? " ↑" : " ↓") : string.Empty;
 }
 
 <section class="page-heading">
@@ -12,6 +18,7 @@
     <div class="section-toolbar">
         <form method="get" class="d-flex gap-2">
             <input name="q" value="@Model.Busqueda" class="form-control" placeholder="Buscar por nombre o localidad" />
+            <select name="pageSize" class="form-select" style="max-width: 100px"><option selected="@(Model.Results.PageSize == 10)">10</option><option selected="@(Model.Results.PageSize == 25)">25</option><option selected="@(Model.Results.PageSize == 50)">50</option></select>
             <button class="btn btn-outline-primary">Buscar</button>
         </form>
         <a class="btn btn-primary" asp-action="NuevoEstadio">Registrar estadio</a>
@@ -24,7 +31,7 @@
     {
         <div class="table-responsive mt-3">
             <table class="table align-middle">
-                <thead><tr><th>Nombre</th><th>Localidad</th><th>Dirección</th><th>Sectores</th><th>Eventos</th><th></th></tr></thead>
+                <thead><tr><th><a class="sortable-link" href="@SortUrl("nombre")">@($"Nombre{Indicator("nombre")}")</a></th><th><a class="sortable-link" href="@SortUrl("localidad")">@($"Localidad{Indicator("localidad")}")</a></th><th>Dirección</th><th><a class="sortable-link" href="@SortUrl("sectores")">@($"Sectores{Indicator("sectores")}")</a></th><th>Eventos</th><th></th></tr></thead>
                 <tbody>
                 @foreach (var item in Model.Results.Items)
                 {
@@ -44,4 +51,5 @@
             </table>
         </div>
     }
+    @if (Model.Results.TotalPages > 1) { <div class="d-flex justify-content-between align-items-center mt-3"><span class="text-secondary">Página @Model.Results.Page de @Model.Results.TotalPages</span><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page <= 1 ? "disabled" : null)" asp-action="Estadios" asp-route-q="@Model.Busqueda" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-page="@(Model.Results.Page - 1)" asp-route-pageSize="@Model.Results.PageSize">Anterior</a><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page >= Model.Results.TotalPages ? "disabled" : null)" asp-action="Estadios" asp-route-q="@Model.Busqueda" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-page="@(Model.Results.Page + 1)" asp-route-pageSize="@Model.Results.PageSize">Siguiente</a></div></div> }
 </section>

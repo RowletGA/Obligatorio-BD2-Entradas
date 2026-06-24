@@ -1,12 +1,24 @@
 @model AdminListViewModel<EventoAdminDto>
 @{
     ViewData["Title"] = "Eventos";
+    var estadoActual = Context.Request.Query["estado"].ToString();
+    string SortUrl(string sort)
+    {
+        var direction = Model.Sort == sort && Model.Direction != "asc" ? "asc" : "desc";
+        return Url.Action("Eventos", new { q = Model.Busqueda, estado = estadoActual, sort, direction, page = Model.Results.Page, pageSize = Model.Results.PageSize }) ?? "#";
+    }
+    string Indicator(string sort) => Model.Sort == sort ? (Model.Direction == "asc" ? " ↑" : " ↓") : string.Empty;
 }
 
 <section class="page-heading"><p class="section-kicker">Administración</p><h1>Eventos</h1></section>
 <section class="content-panel">
     <div class="section-toolbar">
-        <p class="text-secondary mb-0">Eventos de la jurisdicción del administrador.</p>
+        <form method="get" class="d-flex flex-wrap gap-2">
+            <input name="q" value="@Model.Busqueda" class="form-control" placeholder="Buscar equipo o estadio" />
+            <select name="estado" class="form-select"><option value="">Todos los estados</option><option value="PROGRAMADO" selected="@(estadoActual == "PROGRAMADO")">PROGRAMADO</option><option value="EN_CURSO" selected="@(estadoActual == "EN_CURSO")">EN_CURSO</option><option value="FINALIZADO" selected="@(estadoActual == "FINALIZADO")">FINALIZADO</option><option value="CANCELADO" selected="@(estadoActual == "CANCELADO")">CANCELADO</option></select>
+            <select name="pageSize" class="form-select" style="max-width: 100px"><option selected="@(Model.Results.PageSize == 10)">10</option><option selected="@(Model.Results.PageSize == 25)">25</option><option selected="@(Model.Results.PageSize == 50)">50</option></select>
+            <button class="btn btn-outline-primary">Filtrar</button>
+        </form>
         <a class="btn btn-primary" asp-action="NuevoEvento">Crear evento</a>
     </div>
     @if (Model.Results.Items.Count == 0)
@@ -17,7 +29,7 @@
     {
         <div class="table-responsive mt-3">
             <table class="table align-middle">
-                <thead><tr><th>Fecha</th><th>Estadio</th><th>Partido</th><th>Estado</th><th></th></tr></thead>
+                <thead><tr><th><a class="sortable-link" href="@SortUrl("fecha")">@($"Fecha{Indicator("fecha")}")</a></th><th><a class="sortable-link" href="@SortUrl("estadio")">@($"Estadio{Indicator("estadio")}")</a></th><th><a class="sortable-link" href="@SortUrl("local")">@($"Partido{Indicator("local")}")</a></th><th><a class="sortable-link" href="@SortUrl("estado")">@($"Estado{Indicator("estado")}")</a></th><th></th></tr></thead>
                 <tbody>
                 @foreach (var item in Model.Results.Items)
                 {
@@ -25,7 +37,7 @@
                         <td>@item.FechaHora.ToString("g")</td>
                         <td>@item.Estadio</td>
                         <td>@item.EquipoLocal vs @item.EquipoVisitante</td>
-                        <td><span class="badge text-bg-secondary">@item.EstadoEvento</span></td>
+                        <td><span class="@StatusBadgeHelper.Evento(item.EstadoEvento)">@item.EstadoEvento</span></td>
                         <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-action="EventoDetalle" asp-route-id="@item.IdEvento">Ver</a></td>
                     </tr>
                 }
@@ -33,4 +45,5 @@
             </table>
         </div>
     }
+    @if (Model.Results.TotalPages > 1) { <div class="d-flex justify-content-between align-items-center mt-3"><span class="text-secondary">Página @Model.Results.Page de @Model.Results.TotalPages</span><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page <= 1 ? "disabled" : null)" asp-action="Eventos" asp-route-q="@Model.Busqueda" asp-route-estado="@estadoActual" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-page="@(Model.Results.Page - 1)" asp-route-pageSize="@Model.Results.PageSize">Anterior</a><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page >= Model.Results.TotalPages ? "disabled" : null)" asp-action="Eventos" asp-route-q="@Model.Busqueda" asp-route-estado="@estadoActual" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-page="@(Model.Results.Page + 1)" asp-route-pageSize="@Model.Results.PageSize">Siguiente</a></div></div> }
 </section>

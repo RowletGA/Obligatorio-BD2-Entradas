@@ -31,10 +31,10 @@ public sealed class AdminService(
         return await adminRepository.ObtenerDashboardAsync(admin.PaisSede, cancellationToken);
     }
 
-    public async Task<PagedResult<EstadioAdminDto>> ListarEstadiosAsync(DocumentoUsuario adminDocumento, string? busqueda, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<EstadioAdminDto>> ListarEstadiosAsync(DocumentoUsuario adminDocumento, string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken)
     {
         var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
-        return await adminRepository.ListarEstadiosAsync(admin.PaisSede, busqueda, ClampPage(page), ClampPageSize(pageSize), cancellationToken);
+        return await adminRepository.ListarEstadiosAsync(admin.PaisSede, ClampSearch(busqueda), sort, NormalizeDirection(direction), ClampPage(page), ClampPageSize(pageSize), cancellationToken);
     }
 
     public async Task<IReadOnlyList<EstadioAdminDto>> ListarEstadiosParaSeleccionAsync(DocumentoUsuario adminDocumento, CancellationToken cancellationToken)
@@ -89,10 +89,10 @@ public sealed class AdminService(
         return OperationResult<ulong>.Ok(id, "Estadio creado correctamente.");
     }
 
-    public async Task<PagedResult<SectorAdminDto>> ListarSectoresAsync(DocumentoUsuario adminDocumento, ulong? idEstadio, string? busqueda, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<SectorAdminDto>> ListarSectoresAsync(DocumentoUsuario adminDocumento, ulong? idEstadio, string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken)
     {
         var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
-        return await adminRepository.ListarSectoresAsync(admin.PaisSede, idEstadio, busqueda, ClampPage(page), ClampPageSize(pageSize), cancellationToken);
+        return await adminRepository.ListarSectoresAsync(admin.PaisSede, idEstadio, ClampSearch(busqueda), sort, NormalizeDirection(direction), ClampPage(page), ClampPageSize(pageSize), cancellationToken);
     }
 
     public async Task<IReadOnlyList<SectorAdminDto>> ListarSectoresPorEstadioAsync(DocumentoUsuario adminDocumento, ulong idEstadio, CancellationToken cancellationToken)
@@ -149,9 +149,9 @@ public sealed class AdminService(
         return OperationResult<ulong>.Ok(id, "Sector creado correctamente.");
     }
 
-    public Task<PagedResult<EquipoAdminDto>> ListarEquiposAsync(string? busqueda, int page, int pageSize, CancellationToken cancellationToken)
+    public Task<PagedResult<EquipoAdminDto>> ListarEquiposAsync(string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken)
     {
-        return adminRepository.ListarEquiposAsync(busqueda, ClampPage(page), ClampPageSize(pageSize), cancellationToken);
+        return adminRepository.ListarEquiposAsync(ClampSearch(busqueda), sort, NormalizeDirection(direction), ClampPage(page), ClampPageSize(pageSize), cancellationToken);
     }
 
     public Task<IReadOnlyList<EquipoAdminDto>> ListarEquiposParaSeleccionAsync(CancellationToken cancellationToken)
@@ -190,10 +190,10 @@ public sealed class AdminService(
         return OperationResult<ulong>.Ok(id, "Equipo creado correctamente.");
     }
 
-    public async Task<PagedResult<EventoAdminDto>> ListarEventosAsync(DocumentoUsuario adminDocumento, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<EventoAdminDto>> ListarEventosAsync(DocumentoUsuario adminDocumento, string? busqueda, string? estado, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken)
     {
         var admin = await RequireAdminAsync(adminDocumento, cancellationToken);
-        return await adminRepository.ListarEventosAsync(admin.PaisSede, ClampPage(page), ClampPageSize(pageSize), cancellationToken);
+        return await adminRepository.ListarEventosAsync(admin.PaisSede, ClampSearch(busqueda), NullIfWhiteSpace(estado)?.ToUpperInvariant(), sort, NormalizeDirection(direction), ClampPage(page), ClampPageSize(pageSize), cancellationToken);
     }
 
     public async Task<IReadOnlyList<EventoAdminDto>> ListarEventosAsignablesAsync(DocumentoUsuario adminDocumento, CancellationToken cancellationToken)
@@ -431,6 +431,14 @@ public sealed class AdminService(
 
     private static int ClampPageSize(int pageSize)
     {
-        return pageSize is < 1 or > 50 ? DefaultPageSize : pageSize;
+        return pageSize is 10 or 25 or 50 ? pageSize : DefaultPageSize;
+    }
+
+    private static string NormalizeDirection(string? direction) => direction == "asc" ? "asc" : "desc";
+
+    private static string? ClampSearch(string? value)
+    {
+        var trimmed = NullIfWhiteSpace(value);
+        return trimmed is null ? null : trimmed[..Math.Min(trimmed.Length, 100)];
     }
 }

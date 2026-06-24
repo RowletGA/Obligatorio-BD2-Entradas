@@ -16,6 +16,16 @@ public sealed class EventoRepository(
         EventoFiltroDto filtro,
         CancellationToken cancellationToken)
     {
+        var orderBy = filtro.Sort switch
+        {
+            "local" => "EquipoLocal",
+            "visitante" => "EquipoVisitante",
+            "estadio" => "Estadio",
+            "estado" => "EstadoEvento",
+            "disponibilidad" => "LugaresDisponibles",
+            _ => "FechaHora"
+        };
+        var direction = filtro.Direction == "asc" ? "ASC" : "DESC";
         var sql = new StringBuilder("""
             SELECT
                 IDEvento,
@@ -74,19 +84,14 @@ public sealed class EventoRepository(
             parameters.Add(new MySqlParameter("@Estado", MySqlDbType.VarChar, 20) { Value = filtro.Estado.Trim().ToUpperInvariant() });
         }
 
+        if (filtro.IdSector.HasValue)
+        {
+            sql.AppendLine("AND EXISTS (SELECT 1 FROM EventoSector es WHERE es.IDEvento = V_Eventos.IDEvento AND es.IDSector = @IdSector)");
+            parameters.Add(new MySqlParameter("@IdSector", MySqlDbType.UInt64) { Value = filtro.IdSector.Value });
+        }
+
         sql.AppendLine();
-        sql.AppendLine("""
-            ORDER BY
-                CASE EstadoEvento
-                    WHEN 'PROGRAMADO' THEN 1
-                    WHEN 'EN_CURSO' THEN 2
-                    WHEN 'FINALIZADO' THEN 3
-                    WHEN 'CANCELADO' THEN 4
-                    ELSE 5
-                END,
-                FechaHora,
-                Estadio;
-            """);
+        sql.AppendLine($"ORDER BY {orderBy} {direction}, IDEvento {direction};");
 
         try
         {

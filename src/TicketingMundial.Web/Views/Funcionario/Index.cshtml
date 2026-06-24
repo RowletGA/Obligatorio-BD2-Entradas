@@ -1,10 +1,18 @@
-@model IReadOnlyList<AsignacionFuncionarioDto>
+@model FuncionarioIndexViewModel
 @{ ViewData["Title"] = "Funcionario"; }
-<section class="page-heading"><p class="section-kicker">Funcionario</p><h1>Eventos asignados</h1></section>
+<section class="page-heading"><p class="section-kicker">Funcionario</p><h1>Eventos asignados</h1><p>Eventos activos y acceso directo al escáner.</p></section>
 <section class="content-panel mb-3"><a class="btn btn-primary" asp-action="Escanear">Escanear entradas</a></section>
-<section class="content-panel">
-@if (Model.Count == 0) { <p class="text-secondary mb-0">No tenés asignaciones.</p> }
-else { <div class="table-responsive"><table class="table"><thead><tr><th>Evento</th><th>Fecha</th><th>Estadio</th><th>Sector</th><th>Estado</th><th>Validadas</th><th></th></tr></thead><tbody>
-@foreach (var a in Model) { <tr><td>@a.IdEvento</td><td>@a.FechaEvento.ToString("dd/MM/yyyy HH:mm")</td><td>@a.Estadio</td><td>@a.Sector</td><td>@a.EstadoEvento</td><td>@a.EntradasValidadas</td><td>@(a.EntradasValidadas == 0 ? "Sin validaciones" : "Con actividad")</td></tr> }
+<section class="content-panel mb-3" id="eventos-asignados">
+<h2 class="h5">Eventos activos</h2>
+@if (Model.EventosActivos.Count == 0) { <p class="text-secondary mb-0">No tenés eventos PROGRAMADOS o EN_CURSO asignados.</p> }
+else { <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Evento</th><th>Fecha</th><th>Estadio</th><th>Estado</th><th>Sectores asignados</th><th>Validaciones</th><th></th></tr></thead><tbody>
+@foreach (var e in Model.EventosActivos) { <tr><td>@e.Evento</td><td>@e.FechaEvento.ToString("dd/MM/yyyy HH:mm")</td><td>@e.Estadio</td><td><span class="@StatusBadgeHelper.Evento(e.EstadoEvento)">@e.EstadoEvento</span></td><td>@string.Join(", ", e.Sectores.Select(s => s.Nombre))</td><td>@e.TotalValidaciones</td><td><a class="btn btn-sm btn-outline-primary" asp-action="Escanear">Escanear entradas</a></td></tr> }
+</tbody></table></div> }
+</section>
+<section class="content-panel" id="historial">
+<h2 class="h5">Historial de validaciones</h2>
+@if (Model.Historial.Count == 0) { <p class="text-secondary mb-0">Sin eventos cerrados asignados.</p> }
+else { <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Evento</th><th>Fecha</th><th>Estadio</th><th>Estado</th><th>Sectores</th><th>Total</th><th>Última validación</th></tr></thead><tbody>
+@foreach (var e in Model.Historial) { <tr><td>@e.Evento</td><td>@e.FechaEvento.ToString("dd/MM/yyyy HH:mm")</td><td>@e.Estadio</td><td><span class="@StatusBadgeHelper.Evento(e.EstadoEvento)">@e.EstadoEvento</span></td><td>@foreach (var s in e.Sectores) { <div>@s.Nombre: @s.EntradasValidadas</div> }</td><td>@e.TotalValidaciones</td><td>@(e.UltimaValidacion?.ToString("dd/MM/yyyy HH:mm") ?? "Sin validaciones")</td></tr> }
 </tbody></table></div> }
 </section>

@@ -258,19 +258,19 @@ public sealed class AdminServiceTests
             return Task.FromResult(true);
         }
         public Task<AdminDashboardDto> ObtenerDashboardAsync(string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<PagedResult<EstadioAdminDto>> ListarEstadiosAsync(string paisSede, string? busqueda, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<PagedResult<EstadioAdminDto>> ListarEstadiosAsync(string paisSede, string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<EstadioAdminDto>> ListarEstadiosParaSeleccionAsync(string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ulong> CrearEstadioAsync(EstadioUpsertCommand command, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> ActualizarEstadioAsync(EstadioUpsertCommand command, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<PagedResult<SectorAdminDto>> ListarSectoresAsync(string paisSede, ulong? idEstadio, string? busqueda, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<PagedResult<SectorAdminDto>> ListarSectoresAsync(string paisSede, ulong? idEstadio, string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<SectorAdminDto?> ObtenerSectorAsync(ulong idSector, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ulong> CrearSectorAsync(SectorUpsertCommand command, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> ActualizarSectorAsync(SectorUpsertCommand command, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<PagedResult<EquipoAdminDto>> ListarEquiposAsync(string? busqueda, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<PagedResult<EquipoAdminDto>> ListarEquiposAsync(string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<EquipoAdminDto>> ListarEquiposParaSeleccionAsync(CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ulong> CrearEquipoAsync(EquipoUpsertCommand command, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> ActualizarEquipoAsync(EquipoUpsertCommand command, CancellationToken cancellationToken) => throw new NotImplementedException();
-        public Task<PagedResult<EventoAdminDto>> ListarEventosAsync(string paisSede, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<PagedResult<EventoAdminDto>> ListarEventosAsync(string paisSede, string? busqueda, string? estado, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<ulong> CrearEventoAsync(EventoCreateCommand command, string paisSede, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<EventoCambioEstadoResultadoDto?> CambiarEstadoEventoAsync(ulong idEvento, string estado, string paisSede, CancellationToken cancellationToken) =>
             Task.FromResult<EventoCambioEstadoResultadoDto?>(new EventoCambioEstadoResultadoDto

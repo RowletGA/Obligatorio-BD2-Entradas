@@ -1,5 +1,21 @@
 @model TransferenciasIndexViewModel
-@{ ViewData["Title"] = "Transferencias"; }
-<section class="page-heading"><p class="section-kicker">Usuario</p><h1>Transferencias</h1></section>
-<section class="content-panel mb-3"><h2 class="h5">Recibidas</h2><partial name="_TransferenciasTabla" model="new TransferenciasTablaViewModel { Transferencias = Model.Recibidas }" /></section>
-<section class="content-panel"><h2 class="h5">Enviadas</h2><partial name="_TransferenciasTabla" model="new TransferenciasTablaViewModel { Transferencias = Model.Enviadas, EsEnviadas = true }" /></section>
+@{
+    ViewData["Title"] = "Transferencias";
+    var q = Model.Query;
+}
+<section class="page-heading"><p class="section-kicker">Usuario</p><h1>Transferencias</h1><p>La numeración TRF es global para todas tus transferencias visibles.</p></section>
+<section class="content-panel mb-3">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-12 col-lg-3"><label class="form-label">Buscar</label><input name="Busqueda" value="@q.Busqueda" class="form-control" maxlength="100" placeholder="Persona o evento" /></div>
+        <div class="col-12 col-md-4 col-lg-2"><label class="form-label">Tipo</label><select name="Tipo" class="form-select"><option value="">Todas</option><option value="enviadas" selected="@(q.Tipo == "enviadas")">Enviadas</option><option value="recibidas" selected="@(q.Tipo == "recibidas")">Recibidas</option></select></div>
+        <div class="col-12 col-md-4 col-lg-2"><label class="form-label">Estado</label><select name="Estado" class="form-select"><option value="">Todos</option><option value="PENDIENTE" selected="@(q.Estado == "PENDIENTE")">PENDIENTE</option><option value="ACEPTADA" selected="@(q.Estado == "ACEPTADA")">ACEPTADA</option><option value="RECHAZADA" selected="@(q.Estado == "RECHAZADA")">RECHAZADA</option><option value="CANCELADA" selected="@(q.Estado == "CANCELADA")">CANCELADA</option></select></div>
+        <div class="col-12 col-md-4 col-lg-2"><label class="form-label">Desde</label><input name="Desde" type="date" value="@q.Desde?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+        <div class="col-6 col-lg-1"><label class="form-label">Tamaño</label><select name="PageSize" class="form-select"><option selected="@(Model.Results.PageSize == 10)">10</option><option selected="@(Model.Results.PageSize == 25)">25</option><option selected="@(Model.Results.PageSize == 50)">50</option></select></div>
+        <input type="hidden" name="Sort" value="@q.Sort" /><input type="hidden" name="Direction" value="@q.Direction" />
+        <div class="col-6 col-lg-2 d-grid"><button class="btn btn-primary">Aplicar</button></div>
+    </form>
+</section>
+<section class="content-panel">
+<partial name="_TransferenciasTabla" model="new TransferenciasTablaViewModel { Transferencias = Model.Results.Items }" />
+@if (Model.Results.TotalPages > 1) { <div class="d-flex justify-content-between align-items-center mt-3"><span class="text-secondary">Página @Model.Results.Page de @Model.Results.TotalPages</span><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page <= 1 ? "disabled" : null)" href="@Url.Action("Index", new { q.Busqueda, q.Estado, q.Tipo, q.Desde, q.Hasta, q.Sort, q.Direction, page = Model.Results.Page - 1, q.PageSize })">Anterior</a><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page >= Model.Results.TotalPages ? "disabled" : null)" href="@Url.Action("Index", new { q.Busqueda, q.Estado, q.Tipo, q.Desde, q.Hasta, q.Sort, q.Direction, page = Model.Results.Page + 1, q.PageSize })">Siguiente</a></div></div> }
+</section>

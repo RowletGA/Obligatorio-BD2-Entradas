@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QRCoder;
 using TicketingMundial.Application.Abstractions.Services;
+using TicketingMundial.Application.DTOs;
 using TicketingMundial.Domain.Identity;
 using TicketingMundial.Web.Extensions;
 using TicketingMundial.Web.ViewModels;
@@ -12,10 +13,14 @@ namespace TicketingMundial.Web.Controllers;
 public sealed class EntradasController(IOperativaService operativaService) : Controller
 {
     [HttpGet("/Entradas/MisEntradas")]
-    public async Task<IActionResult> MisEntradas(CancellationToken cancellationToken)
+    public async Task<IActionResult> MisEntradas([FromQuery] EntradaListQuery query, CancellationToken cancellationToken)
     {
         SetNoStore();
-        return View(await operativaService.ListarEntradasPropiasAsync(GetDocumento(), cancellationToken));
+        return View(new EntradasIndexViewModel
+        {
+            Query = query,
+            Results = await operativaService.ListarEntradasPropiasAsync(GetDocumento(), query, cancellationToken)
+        });
     }
 
     [HttpGet("/Entradas/Detalle/{id:long}")]

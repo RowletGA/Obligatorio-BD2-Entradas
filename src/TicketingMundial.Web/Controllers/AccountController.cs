@@ -73,7 +73,7 @@ public sealed class AccountController(
                 return Redirect(model.ReturnUrl);
             }
 
-            return RedirectToAction("Index", "Dashboard");
+            return RedirectToPerfilInicial(perfilInicial);
         }
         catch (DatabaseException ex)
         {
@@ -162,7 +162,7 @@ public sealed class AccountController(
         if (roles.Count == 1)
         {
             await EmitirCookieConPerfilActivoAsync(roles[0]);
-            return RedirectToAction("Index", "Dashboard");
+            return RedirectToPerfilInicial(roles[0]);
         }
 
         return View(new SeleccionarPerfilViewModel
@@ -194,7 +194,7 @@ public sealed class AccountController(
 
         await EmitirCookieConPerfilActivoAsync(solicitado);
         TempData["Success"] = $"Perfil activo: {PerfilActivoExtensions.GetNombrePerfil(solicitado)}.";
-        return RedirectToAction("Index", "Dashboard");
+        return RedirectToPerfilInicial(solicitado);
     }
 
     [Authorize]
@@ -243,6 +243,14 @@ public sealed class AccountController(
                 ExpiresUtc = DateTimeOffset.UtcNow.AddHours(rememberMe ? 12 : 2)
             });
     }
+
+    private IActionResult RedirectToPerfilInicial(string? perfil) => perfil switch
+    {
+        RolesAplicacion.Funcionario => RedirectToAction("Index", "Funcionario"),
+        RolesAplicacion.Administrador => RedirectToAction("Index", "Admin"),
+        RolesAplicacion.UsuarioGeneral => RedirectToAction("Index", "Dashboard"),
+        _ => RedirectToAction("Index", "Dashboard")
+    };
 
     private async Task EmitirCookieConPerfilActivoAsync(string perfilActivo)
     {

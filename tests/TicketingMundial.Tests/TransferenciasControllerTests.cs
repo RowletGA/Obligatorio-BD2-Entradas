@@ -25,13 +25,12 @@ public sealed class TransferenciasControllerTests
             recibidas: [CreateTransferencia("ACEPTADA", FechaSolicitudAceptada, FechaRespuestaAceptada)]);
         var controller = CreateController(service);
 
-        var result = await controller.Index(CancellationToken.None);
+        var result = await controller.Index(new TransferenciaListQuery(), CancellationToken.None);
 
         var view = Assert.IsType<ViewResult>(result);
         Assert.Null(view.StatusCode);
         var model = Assert.IsType<TransferenciasIndexViewModel>(view.Model);
-        Assert.Single(model.Enviadas);
-        Assert.Single(model.Recibidas);
+        Assert.Equal(2, model.Results.Items.Count);
     }
 
     [Fact]
@@ -110,12 +109,19 @@ public sealed class TransferenciasControllerTests
     {
         public Task<IReadOnlyList<TransferenciaDto>> ListarTransferenciasEnviadasAsync(DocumentoUsuario usuario, CancellationToken cancellationToken) => Task.FromResult(enviadas);
         public Task<IReadOnlyList<TransferenciaDto>> ListarTransferenciasRecibidasAsync(DocumentoUsuario usuario, CancellationToken cancellationToken) => Task.FromResult(recibidas);
+        public Task<PagedResult<TransferenciaDto>> ListarTransferenciasAsync(DocumentoUsuario usuario, TransferenciaListQuery query, CancellationToken cancellationToken)
+        {
+            var items = query.Tipo == "enviadas" ? enviadas : query.Tipo == "recibidas" ? recibidas : enviadas.Concat(recibidas).ToArray();
+            return Task.FromResult(new PagedResult<TransferenciaDto> { Items = items, Page = 1, PageSize = 10, TotalItems = items.Count });
+        }
 
         public Task<OperationResult<CompraPreviewDto>> PreviewCompraAsync(ulong idEvento, IReadOnlyList<CompraSectorCantidad> cantidades, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<OperationResult<CompraResultadoDto>> ComprarAsync(DocumentoUsuario comprador, ulong idEvento, IReadOnlyList<CompraSectorCantidad> cantidades, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<CompraResumenDto>> ListarComprasAsync(DocumentoUsuario comprador, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<PagedResult<CompraResumenDto>> ListarComprasAsync(DocumentoUsuario comprador, CompraListQuery query, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<CompraDetalleDto?> ObtenerCompraAsync(DocumentoUsuario comprador, ulong idVenta, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<IReadOnlyList<EntradaResumenDto>> ListarEntradasPropiasAsync(DocumentoUsuario propietario, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<PagedResult<EntradaResumenDto>> ListarEntradasPropiasAsync(DocumentoUsuario propietario, EntradaListQuery query, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<EntradaResumenDto?> ObtenerEntradaPropiaAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<OperationResult<QrEntradaGeneradoDto>> GenerarQrEntradaAsync(DocumentoUsuario propietario, ulong idEntrada, string? generationGrant, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<UsuarioDestinoDto?> BuscarUsuarioGeneralPorCorreoAsync(string correo, CancellationToken cancellationToken) => throw new NotImplementedException();

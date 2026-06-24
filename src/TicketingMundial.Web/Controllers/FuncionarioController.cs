@@ -18,7 +18,39 @@ public sealed class FuncionarioController(IOperativaService operativaService) : 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        return View(await operativaService.ListarAsignacionesFuncionarioAsync(GetDocumento(), cancellationToken));
+        var asignaciones = await operativaService.ListarAsignacionesFuncionarioAsync(GetDocumento(), cancellationToken);
+        var eventos = asignaciones
+            .GroupBy(a => a.IdEvento)
+            .Select(group =>
+            {
+                var first = group.OrderBy(a => a.FechaEvento).First();
+                return new FuncionarioEventoAsignadoViewModel
+                {
+                    IdEvento = first.IdEvento,
+                    FechaEvento = first.FechaEvento,
+                    Evento = string.IsNullOrWhiteSpace(first.Evento) ? $"Evento {first.IdEvento}" : first.Evento,
+                    Estadio = first.Estadio,
+                    EstadoEvento = first.EstadoEvento,
+                    Sectores = group
+                        .OrderBy(a => a.Sector)
+                        .Select(a => new FuncionarioSectorResumenViewModel
+                        {
+                            IdSector = a.IdSector,
+                            Nombre = a.Sector,
+                            EntradasValidadas = a.EntradasValidadas,
+                            UltimaValidacion = a.UltimaValidacion
+                        })
+                        .ToArray()
+                };
+            })
+            .OrderBy(e => e.FechaEvento)
+            .ToArray();
+
+        return View(new FuncionarioIndexViewModel
+        {
+            EventosActivos = eventos.Where(e => e.EstadoEvento is "PROGRAMADO" or "EN_CURSO").ToArray(),
+            Historial = eventos.Where(e => e.EstadoEvento is "FINALIZADO" or "CANCELADO").OrderByDescending(e => e.FechaEvento).ToArray()
+        });
     }
 
     [HttpGet("Validar")]

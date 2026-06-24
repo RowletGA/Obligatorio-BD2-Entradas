@@ -112,8 +112,16 @@ public sealed class AdminRepository(
         }
     }
 
-    public async Task<PagedResult<EstadioAdminDto>> ListarEstadiosAsync(string paisSede, string? busqueda, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<EstadioAdminDto>> ListarEstadiosAsync(string paisSede, string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken)
     {
+        var orderBy = sort switch
+        {
+            "localidad" => "e.UbicacionLocalidad",
+            "pais" => "e.UbicacionPais",
+            "sectores" => "Sectores",
+            _ => "e.Nombre"
+        };
+        var dir = direction == "asc" ? "ASC" : "DESC";
         var where = new StringBuilder("WHERE e.UbicacionPais = @PaisSede");
         var parameters = new List<MySqlParameter> { new("@PaisSede", MySqlDbType.VarChar, 50) { Value = paisSede } };
         if (!string.IsNullOrWhiteSpace(busqueda))
@@ -131,7 +139,7 @@ public sealed class AdminRepository(
             LEFT JOIN Evento ev ON ev.IDEstadio = e.IDEstadio
             {where}
             GROUP BY e.IDEstadio, e.Nombre, e.UbicacionPais, e.UbicacionLocalidad, e.UbicacionCalle, e.UbicacionNumero
-            ORDER BY e.Nombre, e.UbicacionLocalidad
+            ORDER BY {orderBy} {dir}, e.IDEstadio {dir}
             LIMIT @Limit OFFSET @Offset;
             """;
         var countSql = $"SELECT COUNT(*) FROM Estadio e {where};";
@@ -140,7 +148,7 @@ public sealed class AdminRepository(
 
     public async Task<IReadOnlyList<EstadioAdminDto>> ListarEstadiosParaSeleccionAsync(string paisSede, CancellationToken cancellationToken)
     {
-        var result = await ListarEstadiosAsync(paisSede, null, 1, 200, cancellationToken);
+        var result = await ListarEstadiosAsync(paisSede, null, "nombre", "asc", 1, 200, cancellationToken);
         return result.Items;
     }
 
@@ -192,8 +200,15 @@ public sealed class AdminRepository(
         }, "actualizar estadio", cancellationToken) > 0;
     }
 
-    public async Task<PagedResult<SectorAdminDto>> ListarSectoresAsync(string paisSede, ulong? idEstadio, string? busqueda, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<SectorAdminDto>> ListarSectoresAsync(string paisSede, ulong? idEstadio, string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken)
     {
+        var orderBy = sort switch
+        {
+            "estadio" => "e.Nombre",
+            "capacidad" => "s.Capacidad",
+            _ => "s.NombreSector"
+        };
+        var dir = direction == "asc" ? "ASC" : "DESC";
         var where = new StringBuilder("WHERE e.UbicacionPais = @PaisSede");
         var parameters = new List<MySqlParameter> { new("@PaisSede", MySqlDbType.VarChar, 50) { Value = paisSede } };
         if (idEstadio.HasValue)
@@ -212,7 +227,7 @@ public sealed class AdminRepository(
             FROM Sector s
             INNER JOIN Estadio e ON e.IDEstadio = s.IDEstadio
             {where}
-            ORDER BY e.Nombre, s.NombreSector
+            ORDER BY {orderBy} {dir}, s.IDSector {dir}
             LIMIT @Limit OFFSET @Offset;
             """;
         var countSql = $"SELECT COUNT(*) FROM Sector s INNER JOIN Estadio e ON e.IDEstadio = s.IDEstadio {where};";
@@ -221,7 +236,7 @@ public sealed class AdminRepository(
 
     public async Task<IReadOnlyList<SectorAdminDto>> ListarSectoresPorEstadioAsync(ulong idEstadio, string paisSede, CancellationToken cancellationToken)
     {
-        var result = await ListarSectoresAsync(paisSede, idEstadio, null, 1, 500, cancellationToken);
+        var result = await ListarSectoresAsync(paisSede, idEstadio, null, "nombre", "asc", 1, 500, cancellationToken);
         return result.Items;
     }
 
@@ -287,8 +302,10 @@ public sealed class AdminRepository(
         }, "verificar sector duplicado", cancellationToken);
     }
 
-    public async Task<PagedResult<EquipoAdminDto>> ListarEquiposAsync(string? busqueda, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<EquipoAdminDto>> ListarEquiposAsync(string? busqueda, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken)
     {
+        var orderBy = sort == "grupo" ? "Grupo" : "Pais";
+        var dir = direction == "asc" ? "ASC" : "DESC";
         var where = new StringBuilder();
         var parameters = new List<MySqlParameter>();
         if (!string.IsNullOrWhiteSpace(busqueda))
@@ -300,7 +317,7 @@ public sealed class AdminRepository(
             SELECT IDEquipo, Pais, Grupo
             FROM Equipo
             {where}
-            ORDER BY Pais, Grupo
+            ORDER BY {orderBy} {dir}, IDEquipo {dir}
             LIMIT @Limit OFFSET @Offset;
             """;
         var countSql = $"SELECT COUNT(*) FROM Equipo {where};";
@@ -309,7 +326,7 @@ public sealed class AdminRepository(
 
     public async Task<IReadOnlyList<EquipoAdminDto>> ListarEquiposParaSeleccionAsync(CancellationToken cancellationToken)
     {
-        var result = await ListarEquiposAsync(null, 1, 500, cancellationToken);
+        var result = await ListarEquiposAsync(null, "pais", "asc", 1, 500, cancellationToken);
         return result.Items;
     }
 
@@ -344,19 +361,41 @@ public sealed class AdminRepository(
         }, "actualizar equipo", cancellationToken) > 0;
     }
 
-    public async Task<PagedResult<EventoAdminDto>> ListarEventosAsync(string paisSede, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<EventoAdminDto>> ListarEventosAsync(string paisSede, string? busqueda, string? estado, string? sort, string? direction, int page, int pageSize, CancellationToken cancellationToken)
     {
-        const string sql = """
+        var orderBy = sort switch
+        {
+            "local" => "v.EquipoLocal",
+            "visitante" => "v.EquipoVisitante",
+            "estadio" => "v.Estadio",
+            "estado" => "v.EstadoEvento",
+            "disponibilidad" => "LugaresDisponibles",
+            _ => "v.FechaHora"
+        };
+        var dir = direction == "asc" ? "ASC" : "DESC";
+        var where = new StringBuilder("WHERE v.PaisEstadio = @PaisSede");
+        var parameters = new List<MySqlParameter> { new("@PaisSede", MySqlDbType.VarChar, 50) { Value = paisSede } };
+        if (!string.IsNullOrWhiteSpace(busqueda))
+        {
+            where.AppendLine(" AND (v.EquipoLocal LIKE @Busqueda ESCAPE '\\\\' OR v.EquipoVisitante LIKE @Busqueda ESCAPE '\\\\' OR v.Estadio LIKE @Busqueda ESCAPE '\\\\')");
+            parameters.Add(new MySqlParameter("@Busqueda", MySqlDbType.VarChar, 120) { Value = $"%{SqlSafety.EscapeLikePattern(busqueda.Trim())}%" });
+        }
+        if (!string.IsNullOrWhiteSpace(estado))
+        {
+            where.AppendLine(" AND v.EstadoEvento = @Estado");
+            parameters.Add(new MySqlParameter("@Estado", MySqlDbType.VarChar, 20) { Value = estado });
+        }
+        var sql = $"""
             SELECT v.IDEvento, v.FechaHora, v.EstadoEvento, v.IDEstadio, v.Estadio, v.PaisEstadio,
                    v.IDEquipoLocal, v.EquipoLocal, v.IDEquipoVisitante, v.EquipoVisitante,
-                   (SELECT COUNT(*) FROM Entrada en WHERE en.IDEvento = v.IDEvento) AS EntradasEmitidas
+                   (SELECT COUNT(*) FROM Entrada en WHERE en.IDEvento = v.IDEvento) AS EntradasEmitidas,
+                   COALESCE((SELECT SUM(ds.LugaresDisponibles) FROM V_DisponibilidadSectores ds WHERE ds.IDEvento = v.IDEvento), 0) AS LugaresDisponibles
             FROM V_Eventos v
-            WHERE v.PaisEstadio = @PaisSede
-            ORDER BY FechaHora DESC
+            {where}
+            ORDER BY {orderBy} {dir}, v.IDEvento {dir}
             LIMIT @Limit OFFSET @Offset;
             """;
-        const string countSql = "SELECT COUNT(*) FROM V_Eventos WHERE PaisEstadio = @PaisSede;";
-        var parameters = new List<MySqlParameter> { new("@PaisSede", MySqlDbType.VarChar, 50) { Value = paisSede } };
+        var countSql = $"SELECT COUNT(*) FROM V_Eventos v {where};";
         return await QueryPagedAsync(sql, countSql, parameters, page, pageSize, MapEvento, "listar eventos administrativos", cancellationToken);
     }
 

@@ -9,6 +9,19 @@ Aplicación ASP.NET Core MVC para venta, transferencia y validación de entradas
 - Scripts originales de `database/`
 - Sin ORM, sin Dapper y sin migraciones
 
+## Herramientas y tecnologías usadas
+
+- C# y .NET 8.
+- ASP.NET Core MVC con Razor Views.
+- MySQL 8 como motor de base de datos.
+- MySqlConnector para acceso SQL manual y parametrizado.
+- HTML, CSS, Bootstrap 5 y JavaScript del navegador.
+- QRCoder para generar imágenes QR.
+- HMAC-SHA256 para firma de tokens QR dinámicos.
+- `PasswordHasher` de ASP.NET Core Identity para hashes de contraseña.
+- xUnit, Microsoft.NET.Test.Sdk y coverlet para pruebas automatizadas.
+- Git para control de versiones.
+
 Verificar el SDK:
 
 ```bash
@@ -179,8 +192,6 @@ Los roles se consultan en la base y no se aceptan desde formularios ni rutas.
 
 Si un usuario tiene un solo rol, la aplicación activa ese perfil automáticamente. Si tiene varios roles, después del login ve `/Account/SeleccionarPerfil` y elige con qué interfaz operar. El claim propio `PerfilActivo` solo controla navegación y dashboard; todos los roles reales permanecen como `ClaimTypes.Role` y los `[Authorize(Roles = "...")]` siguen siendo la protección de seguridad.
 
-Documento específico: `docs/PERFILES_Y_NAVEGACION.md`.
-
 ## Pruebas
 
 Las pruebas cubren:
@@ -212,3 +223,15 @@ Usuarios creados antes de ejecutar `04_AgregarHashContrasena.sql` tendrán `Hash
 - Usuarios viejos no ingresan: verificar `HashContrasena IS NULL`.
 
 Nunca publicar credenciales reales, cadenas de conexión reales ni hashes.
+
+## Listados, códigos visuales y funcionario
+
+Los códigos `ENT-000`, `VENT-000` y `TRF-000` son identificadores visuales dinámicos calculados por la aplicación. No reemplazan `IDEntrada`, `IDVenta` ni `IDTransferencia`, que siguen siendo las claves reales para URLs, formularios, relaciones y consultas.
+
+- `VENT`: `ROW_NUMBER()` por usuario sobre `FechaVenta ASC, IDVenta ASC`; el listado inicia de más reciente a más antigua.
+- `TRF`: numeración global por usuario sobre todas las transferencias visibles, con `FechaSolicitud ASC, IDTransferencia ASC`; evita duplicar `TRF-001` entre enviadas y recibidas.
+- `ENT`: numeración por fecha efectiva de adquisición del propietario actual. Si recibió la entrada por transferencia aceptada, usa la última `FechaRespuesta` aceptada hacia ese propietario; si no, usa `Entrada.FechaEmision`.
+
+Los listados de entradas, compras, transferencias, eventos y administración tienen filtros, búsqueda parametrizada, paginación limitada a 10/25/50 y ordenamiento por claves de lista blanca. Los badges de estado se centralizan en `StatusBadgeHelper` y clases CSS semánticas.
+
+La interfaz de funcionario quedó centrada en `/Funcionario`: eventos asignados activos, escáner, historial, cambiar perfil si corresponde y cerrar sesión. `/Dashboard/Funcionario` continúa redirigiendo para compatibilidad.

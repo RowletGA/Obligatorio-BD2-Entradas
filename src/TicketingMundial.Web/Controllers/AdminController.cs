@@ -26,10 +26,10 @@ public sealed class AdminController(
     }
 
     [HttpGet("Estadios")]
-    public async Task<IActionResult> Estadios(string? q, int page = 1, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Estadios(string? q, string? sort, string? direction, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
-        var results = await adminService.ListarEstadiosAsync(GetDocumento(), q, page, 10, cancellationToken);
-        return View(new AdminListViewModel<EstadioAdminDto> { Results = results, Busqueda = q });
+        var results = await adminService.ListarEstadiosAsync(GetDocumento(), q, sort, direction, page, pageSize, cancellationToken);
+        return View(new AdminListViewModel<EstadioAdminDto> { Results = results, Busqueda = q, Sort = sort, Direction = direction, PageSize = pageSize });
     }
 
     [HttpGet("Estadios/Nuevo")]
@@ -82,14 +82,17 @@ public sealed class AdminController(
     }
 
     [HttpGet("Sectores")]
-    public async Task<IActionResult> Sectores(ulong? idEstadio, string? q, int page = 1, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Sectores(ulong? idEstadio, string? q, string? sort, string? direction, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
-        var results = await adminService.ListarSectoresAsync(GetDocumento(), idEstadio, q, page, 10, cancellationToken);
+        var results = await adminService.ListarSectoresAsync(GetDocumento(), idEstadio, q, sort, direction, page, pageSize, cancellationToken);
         return View(new AdminListViewModel<SectorAdminDto>
         {
             Results = results,
             Busqueda = q,
             IdEstadio = idEstadio,
+            Sort = sort,
+            Direction = direction,
+            PageSize = pageSize,
             Estadios = await GetEstadiosOptionsAsync(cancellationToken)
         });
     }
@@ -134,10 +137,10 @@ public sealed class AdminController(
     }
 
     [HttpGet("Equipos")]
-    public async Task<IActionResult> Equipos(string? q, int page = 1, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Equipos(string? q, string? sort, string? direction, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
-        var results = await adminService.ListarEquiposAsync(q, page, 10, cancellationToken);
-        return View(new AdminListViewModel<EquipoAdminDto> { Results = results, Busqueda = q });
+        var results = await adminService.ListarEquiposAsync(q, sort, direction, page, pageSize, cancellationToken);
+        return View(new AdminListViewModel<EquipoAdminDto> { Results = results, Busqueda = q, Sort = sort, Direction = direction, PageSize = pageSize });
     }
 
     [HttpGet("Equipos/Nuevo")]
@@ -174,10 +177,10 @@ public sealed class AdminController(
     }
 
     [HttpGet("Eventos")]
-    public async Task<IActionResult> Eventos(int page = 1, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Eventos(string? q, string? estado, string? sort, string? direction, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
-        var results = await adminService.ListarEventosAsync(GetDocumento(), page, 10, cancellationToken);
-        return View(new AdminListViewModel<EventoAdminDto> { Results = results });
+        var results = await adminService.ListarEventosAsync(GetDocumento(), q, estado, sort, direction, page, pageSize, cancellationToken);
+        return View(new AdminListViewModel<EventoAdminDto> { Results = results, Busqueda = q, Sort = sort, Direction = direction, PageSize = pageSize });
     }
 
     [HttpGet("Eventos/Nuevo")]

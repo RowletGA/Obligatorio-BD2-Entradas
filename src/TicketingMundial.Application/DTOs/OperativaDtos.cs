@@ -36,6 +36,7 @@ public sealed class CompraResultadoDto
 public sealed class CompraResumenDto
 {
     public ulong IdVenta { get; init; }
+    public int NumeroVisual { get; init; }
     public DateTime FechaVenta { get; init; }
     public string EstadoVenta { get; init; } = string.Empty;
     public decimal MontoTotal { get; init; }
@@ -53,10 +54,12 @@ public sealed class CompraDetalleDto
 public sealed class EntradaResumenDto
 {
     public ulong IdEntrada { get; init; }
+    public int NumeroVisual { get; init; }
+    public DateTime FechaAdquisicion { get; init; }
     public ulong IdEvento { get; init; }
     public DateTime FechaEvento { get; init; }
-    public string EstadoEvento { get; init; } = string.Empty;
     public string Evento { get; init; } = string.Empty;
+    public string EstadoEvento { get; init; } = string.Empty;
     public string Estadio { get; init; } = string.Empty;
     public ulong IdSector { get; init; }
     public string Sector { get; init; } = string.Empty;
@@ -68,6 +71,7 @@ public sealed class EntradaResumenDto
 public sealed class TransferenciaDto
 {
     public ulong IdTransferencia { get; init; }
+    public int NumeroVisual { get; init; }
     public ulong IdEntrada { get; init; }
     public DateTime FechaSolicitud { get; init; }
     public DateTime? FechaRespuesta { get; init; }
@@ -80,6 +84,7 @@ public sealed class TransferenciaDto
     public DateTime FechaEvento { get; init; }
     public string Estadio { get; init; } = string.Empty;
     public string Sector { get; init; } = string.Empty;
+    public bool EsEnviada { get; init; }
 }
 
 public sealed class UsuarioDestinoDto
@@ -104,11 +109,53 @@ public sealed class AsignacionFuncionarioDto
     public string NumLegajo { get; init; } = string.Empty;
     public ulong IdEvento { get; init; }
     public DateTime FechaEvento { get; init; }
+    public string Evento { get; init; } = string.Empty;
     public string EstadoEvento { get; init; } = string.Empty;
     public ulong IdSector { get; init; }
     public string Sector { get; init; } = string.Empty;
     public string Estadio { get; init; } = string.Empty;
     public int EntradasValidadas { get; init; }
+    public DateTime? UltimaValidacion { get; init; }
+}
+
+public sealed class CompraListQuery
+{
+    public string? Busqueda { get; init; }
+    public string? Estado { get; init; }
+    public string? Evento { get; init; }
+    public DateTime? Desde { get; init; }
+    public DateTime? Hasta { get; init; }
+    public string? Sort { get; init; }
+    public string? Direction { get; init; }
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 10;
+}
+
+public sealed class EntradaListQuery
+{
+    public string? Busqueda { get; init; }
+    public string? Estado { get; init; }
+    public DateTime? FechaEventoDesde { get; init; }
+    public DateTime? FechaEventoHasta { get; init; }
+    public DateTime? FechaAdquisicionDesde { get; init; }
+    public DateTime? FechaAdquisicionHasta { get; init; }
+    public string? Sort { get; init; }
+    public string? Direction { get; init; }
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 10;
+}
+
+public sealed class TransferenciaListQuery
+{
+    public string? Busqueda { get; init; }
+    public string? Estado { get; init; }
+    public string? Tipo { get; init; }
+    public DateTime? Desde { get; init; }
+    public DateTime? Hasta { get; init; }
+    public string? Sort { get; init; }
+    public string? Direction { get; init; }
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 10;
 }
 
 public sealed class ValidacionEntradaDto

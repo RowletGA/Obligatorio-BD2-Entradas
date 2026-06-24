@@ -1,6 +1,18 @@
 @model TransferenciasTablaViewModel
 @{
     var transferencias = Model.Transferencias;
+    string SortUrl(string sort)
+    {
+        var currentSort = Context.Request.Query["Sort"].ToString();
+        var currentDirection = Context.Request.Query["Direction"].ToString();
+        var direction = currentSort == sort && currentDirection != "asc" ? "asc" : "desc";
+        var route = Context.Request.Query.ToDictionary(item => item.Key, item => (object?)item.Value.ToString());
+        route["Sort"] = sort;
+        route["Direction"] = direction;
+        route["Page"] = Context.Request.Query["Page"].FirstOrDefault() ?? "1";
+        return Url.Action("Index", route) ?? "#";
+    }
+    string Indicator(string sort) => Context.Request.Query["Sort"].ToString() == sort ? (Context.Request.Query["Direction"].ToString() == "asc" ? " ↑" : " ↓") : string.Empty;
 }
 
 @if (transferencias.Count == 0)
@@ -13,14 +25,11 @@ else
         <table class="table align-middle">
             <thead>
                 <tr>
-                    <th>Nro.</th>
-                    <th>Entrada</th>
-                    <th>Evento</th>
-                    <th>Sector</th>
-                    <th>Solicitud</th>
-                    <th>Respuesta</th>
-                    <th>Estado</th>
-                    <th>@(Model.EsEnviadas ? "Destinatario" : "Origen")</th>
+                    <th><a class="sortable-link" href="@SortUrl("codigo")">@($"Código{Indicator("codigo")}")</a></th>
+                    <th><a class="sortable-link" href="@SortUrl("evento")">@($"Evento{Indicator("evento")}")</a></th>
+                    <th><a class="sortable-link" href="@SortUrl("fecha")">@($"Fechas{Indicator("fecha")}")</a></th>
+                    <th><a class="sortable-link" href="@SortUrl("estado")">@($"Estado{Indicator("estado")}")</a></th>
+                    <th><a class="sortable-link" href="@SortUrl("persona")">@($"Persona{Indicator("persona")}")</a></th>
                     <th></th>
                 </tr>
             </thead>
@@ -29,25 +38,25 @@ else
             {
                 var t = transferencias[i];
                 <tr>
-                    <td>@($"TRF-{i + 1:000}")</td>
-                    <td>@($"ENT-{i + 1:000}")</td>
+                    <td>@VisualCodeFormatter.Transferencia(t.NumeroVisual)</td>
                     <td>
                         <div class="fw-semibold">@t.Evento</div>
-                        <div class="small text-secondary">@t.FechaEvento.ToString("dd/MM/yyyy HH:mm") · @t.Estadio</div>
+                        <div class="small text-secondary">@t.Sector · @t.FechaEvento.ToString("dd/MM/yyyy HH:mm") · @t.Estadio</div>
                     </td>
-                    <td>@t.Sector</td>
-                    <td>@t.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>@(t.FechaRespuesta?.ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")</td>
-                    <td><span class="badge text-bg-secondary">@t.Estado</span></td>
-                    <td>@(Model.EsEnviadas ? t.CorreoRecibe : t.CorreoOtorga)</td>
+                    <td>
+                        <div>Solicitud: @t.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</div>
+                        <div class="small text-secondary">Respuesta: @(t.FechaRespuesta?.ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")</div>
+                    </td>
+                    <td><span class="@StatusBadgeHelper.Transferencia(t.Estado)">@t.Estado</span></td>
+                    <td><span class="text-secondary">@(t.EsEnviada ? "Para" : "De")</span> @(t.EsEnviada ? t.CorreoRecibe : t.CorreoOtorga)</td>
                     <td class="text-end">
-                        @if (t.Estado == "PENDIENTE" && Model.EsEnviadas)
+                        @if (t.Estado == "PENDIENTE" && t.EsEnviada)
                         {
                             <form asp-controller="Transferencias" asp-action="Cancelar" asp-route-id="@t.IdTransferencia" method="post" class="d-inline">
                                 <button class="btn btn-sm btn-outline-danger">Cancelar</button>
                             </form>
                         }
-                        @if (t.Estado == "PENDIENTE" && !Model.EsEnviadas)
+                        @if (t.Estado == "PENDIENTE" && !t.EsEnviada)
                         {
                             <form asp-controller="Transferencias" asp-action="Aceptar" asp-route-id="@t.IdTransferencia" method="post" class="d-inline">
                                 <button class="btn btn-sm btn-outline-primary">Aceptar</button>

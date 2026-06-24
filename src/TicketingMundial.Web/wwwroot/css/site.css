@@ -316,6 +316,69 @@ body {
     font-weight: 800;
 }
 
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    padding: .25rem .55rem;
+    color: #0f172a;
+    background: #e2e8f0;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 900;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.status-badge-success {
+    color: #14532d;
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+.status-badge-success-strong {
+    color: #ffffff;
+    background: #166534;
+    border-color: #166534;
+}
+
+.status-badge-danger {
+    color: #7f1d1d;
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.status-badge-danger-strong {
+    color: #ffffff;
+    background: #991b1b;
+    border-color: #7f1d1d;
+}
+
+.status-badge-muted {
+    color: #334155;
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+}
+
+.status-badge-info {
+    color: #1e3a8a;
+    background: #dbeafe;
+    border-color: #93c5fd;
+}
+
+.status-badge-dark {
+    color: #ffffff;
+    background: #334155;
+    border-color: #1e293b;
+}
+
+.sortable-link {
+    color: inherit;
+    font-weight: 900;
+    text-decoration: none;
+}
+
 .btn-primary {
     --bs-btn-bg: var(--teal);
     --bs-btn-border-color: var(--teal);
@@ -332,6 +395,8 @@ body {
 
 .table > :not(caption) > * > * {
     padding: .9rem .75rem;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
 }
 
 .placeholder-panel {

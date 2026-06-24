@@ -51,9 +51,13 @@ public sealed class ComprasController(IOperativaService operativaService) : Cont
     }
 
     [HttpGet("/Compras")]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index([FromQuery] CompraListQuery query, CancellationToken cancellationToken)
     {
-        return View(await operativaService.ListarComprasAsync(GetDocumento(), cancellationToken));
+        return View(new ComprasIndexViewModel
+        {
+            Query = query,
+            Results = await operativaService.ListarComprasAsync(GetDocumento(), query, cancellationToken)
+        });
     }
 
     [HttpGet("/Compras/Detalle/{id:long}")]

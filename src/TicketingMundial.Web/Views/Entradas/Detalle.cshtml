@@ -7,7 +7,7 @@
 }
 <section class="page-heading"><p class="section-kicker">Entrada</p><h1>Detalle de entrada</h1><p>@Model.Evento · @Model.Estadio</p></section>
 <section class="content-panel">
-<div class="detail-grid"><div><span>Fecha</span><strong>@Model.FechaEvento.ToString("dd/MM/yyyy HH:mm")</strong></div><div><span>Sector</span><strong>@Model.Sector</strong></div><div><span>Estado entrada</span><strong>@Model.EstadoEntrada</strong></div><div><span>Estado evento</span><strong>@Model.EstadoEvento</strong></div><div><span>Costo</span><strong>@MoneyFormatter.Format(Model.Costo)</strong></div><div><span>Transferencias aceptadas</span><strong>@Model.TransferenciasAceptadas</strong></div></div>
+<div class="detail-grid"><div><span>Código visual</span><strong>@VisualCodeFormatter.Entrada(Model.NumeroVisual)</strong></div><div><span>Adquisición</span><strong>@(Model.FechaAdquisicion == DateTime.MinValue ? "-" : Model.FechaAdquisicion.ToString("dd/MM/yyyy HH:mm"))</strong></div><div><span>Fecha</span><strong>@Model.FechaEvento.ToString("dd/MM/yyyy HH:mm")</strong></div><div><span>Sector</span><strong>@Model.Sector</strong></div><div><span>Estado entrada</span><strong><span class="@StatusBadgeHelper.Entrada(Model.EstadoEntrada)">@Model.EstadoEntrada</span></strong></div><div><span>Estado evento</span><strong><span class="@StatusBadgeHelper.Evento(Model.EstadoEvento)">@Model.EstadoEvento</span></strong></div><div><span>Costo</span><strong>@MoneyFormatter.Format(Model.Costo)</strong></div><div><span>Transferencias aceptadas</span><strong>@Model.TransferenciasAceptadas</strong></div></div>
 @if (Model.EstadoEntrada == "VALIDADA")
 {
     <div class="alert alert-success mt-3 mb-0">Esta entrada ya fue utilizada.</div>

@@ -10,6 +10,8 @@ namespace TicketingMundial.Application.Services;
 
 public sealed class OperativaService(IOperativaRepository repository, IQrTokenService qrTokenService) : IOperativaService
 {
+    private static readonly int[] PageSizesPermitidos = [10, 25, 50];
+
     public async Task<OperationResult<CompraPreviewDto>> PreviewCompraAsync(ulong idEvento, IReadOnlyList<CompraSectorCantidad> cantidades, CancellationToken cancellationToken)
     {
         var validation = ValidateCantidades(cantidades);
@@ -39,11 +41,17 @@ public sealed class OperativaService(IOperativaRepository repository, IQrTokenSe
     public Task<IReadOnlyList<CompraResumenDto>> ListarComprasAsync(DocumentoUsuario comprador, CancellationToken cancellationToken) =>
         repository.ListarComprasAsync(NormalizeDocumento(comprador), cancellationToken);
 
+    public Task<PagedResult<CompraResumenDto>> ListarComprasAsync(DocumentoUsuario comprador, CompraListQuery query, CancellationToken cancellationToken) =>
+        repository.ListarComprasAsync(NormalizeDocumento(comprador), NormalizeCompraQuery(query), cancellationToken);
+
     public Task<CompraDetalleDto?> ObtenerCompraAsync(DocumentoUsuario comprador, ulong idVenta, CancellationToken cancellationToken) =>
         repository.ObtenerCompraAsync(NormalizeDocumento(comprador), idVenta, cancellationToken);
 
     public Task<IReadOnlyList<EntradaResumenDto>> ListarEntradasPropiasAsync(DocumentoUsuario propietario, CancellationToken cancellationToken) =>
         repository.ListarEntradasPropiasAsync(NormalizeDocumento(propietario), cancellationToken);
+
+    public Task<PagedResult<EntradaResumenDto>> ListarEntradasPropiasAsync(DocumentoUsuario propietario, EntradaListQuery query, CancellationToken cancellationToken) =>
+        repository.ListarEntradasPropiasAsync(NormalizeDocumento(propietario), NormalizeEntradaQuery(query), cancellationToken);
 
     public Task<EntradaResumenDto?> ObtenerEntradaPropiaAsync(DocumentoUsuario propietario, ulong idEntrada, CancellationToken cancellationToken) =>
         repository.ObtenerEntradaPropiaAsync(NormalizeDocumento(propietario), idEntrada, cancellationToken);
@@ -142,6 +150,9 @@ public sealed class OperativaService(IOperativaRepository repository, IQrTokenSe
 
     public Task<IReadOnlyList<TransferenciaDto>> ListarTransferenciasRecibidasAsync(DocumentoUsuario usuario, CancellationToken cancellationToken) =>
         repository.ListarTransferenciasRecibidasAsync(NormalizeDocumento(usuario), cancellationToken);
+
+    public Task<PagedResult<TransferenciaDto>> ListarTransferenciasAsync(DocumentoUsuario usuario, TransferenciaListQuery query, CancellationToken cancellationToken) =>
+        repository.ListarTransferenciasAsync(NormalizeDocumento(usuario), NormalizeTransferenciaQuery(query), cancellationToken);
 
     public async Task<OperationResult> ResponderTransferenciaAsync(DocumentoUsuario usuario, ulong idTransferencia, string estado, bool receptor, CancellationToken cancellationToken)
     {
@@ -274,6 +285,56 @@ public sealed class OperativaService(IOperativaRepository repository, IQrTokenSe
         new(documento.TipoDocumento.Trim().ToUpperInvariant(), documento.PaisDocumento.Trim().ToUpperInvariant(), documento.NumeroDocumento.Trim());
 
     private static int ClampLimit(int limite) => limite is < 1 or > 100 ? 10 : limite;
+
+    private static int ClampPage(int page) => page < 1 ? 1 : page;
+
+    private static int ClampPageSize(int pageSize) => PageSizesPermitidos.Contains(pageSize) ? pageSize : 10;
+
+    private static string? ClampSearch(string? value)
+    {
+        var trimmed = NullIfWhiteSpace(value);
+        return trimmed is null ? null : trimmed[..Math.Min(trimmed.Length, 100)];
+    }
+
+    private static CompraListQuery NormalizeCompraQuery(CompraListQuery query) => new()
+    {
+        Busqueda = ClampSearch(query.Busqueda),
+        Estado = NullIfWhiteSpace(query.Estado)?.ToLowerInvariant(),
+        Evento = ClampSearch(query.Evento),
+        Desde = query.Desde,
+        Hasta = query.Hasta,
+        Sort = NullIfWhiteSpace(query.Sort),
+        Direction = query.Direction == "asc" ? "asc" : "desc",
+        Page = ClampPage(query.Page),
+        PageSize = ClampPageSize(query.PageSize)
+    };
+
+    private static EntradaListQuery NormalizeEntradaQuery(EntradaListQuery query) => new()
+    {
+        Busqueda = ClampSearch(query.Busqueda),
+        Estado = NullIfWhiteSpace(query.Estado)?.ToUpperInvariant(),
+        FechaEventoDesde = query.FechaEventoDesde,
+        FechaEventoHasta = query.FechaEventoHasta,
+        FechaAdquisicionDesde = query.FechaAdquisicionDesde,
+        FechaAdquisicionHasta = query.FechaAdquisicionHasta,
+        Sort = NullIfWhiteSpace(query.Sort),
+        Direction = query.Direction == "asc" ? "asc" : "desc",
+        Page = ClampPage(query.Page),
+        PageSize = ClampPageSize(query.PageSize)
+    };
+
+    private static TransferenciaListQuery NormalizeTransferenciaQuery(TransferenciaListQuery query) => new()
+    {
+        Busqueda = ClampSearch(query.Busqueda),
+        Estado = NullIfWhiteSpace(query.Estado)?.ToUpperInvariant(),
+        Tipo = NullIfWhiteSpace(query.Tipo)?.ToLowerInvariant(),
+        Desde = query.Desde,
+        Hasta = query.Hasta,
+        Sort = NullIfWhiteSpace(query.Sort),
+        Direction = query.Direction == "asc" ? "asc" : "desc",
+        Page = ClampPage(query.Page),
+        PageSize = ClampPageSize(query.PageSize)
+    };
 
     private static string? NullIfWhiteSpace(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

@@ -1,12 +1,31 @@
-@model IReadOnlyList<CompraResumenDto>
+@model ComprasIndexViewModel
 @{
     ViewData["Title"] = "Mis compras";
+    var q = Model.Query;
+    string SortUrl(string sort)
+    {
+        var direction = q.Sort == sort && q.Direction != "asc" ? "asc" : "desc";
+        return Url.Action("Index", new { q.Busqueda, q.Estado, q.Evento, q.Desde, q.Hasta, sort, direction, page = Model.Results.Page, q.PageSize }) ?? "#";
+    }
+    string Indicator(string sort) => q.Sort == sort ? (q.Direction == "asc" ? " ↑" : " ↓") : string.Empty;
 }
 <section class="page-heading"><p class="section-kicker">Usuario</p><h1>Mis compras</h1></section>
+<section class="content-panel mb-3">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-12 col-lg-3"><label class="form-label">Buscar</label><input name="Busqueda" value="@q.Busqueda" class="form-control" maxlength="100" placeholder="Código o evento" /></div>
+        <div class="col-12 col-md-4 col-lg-2"><label class="form-label">Estado</label><select name="Estado" class="form-select"><option value="">Todos</option><option value="pendiente" selected="@(q.Estado == "pendiente")">pendiente</option><option value="confirmada" selected="@(q.Estado == "confirmada")">confirmada</option><option value="paga" selected="@(q.Estado == "paga")">paga</option></select></div>
+        <div class="col-12 col-md-4 col-lg-2"><label class="form-label">Desde</label><input name="Desde" type="date" value="@q.Desde?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+        <div class="col-12 col-md-4 col-lg-2"><label class="form-label">Hasta</label><input name="Hasta" type="date" value="@q.Hasta?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+        <div class="col-6 col-lg-1"><label class="form-label">Tamaño</label><select name="PageSize" class="form-select"><option selected="@(Model.Results.PageSize == 10)">10</option><option selected="@(Model.Results.PageSize == 25)">25</option><option selected="@(Model.Results.PageSize == 50)">50</option></select></div>
+        <input type="hidden" name="Sort" value="@q.Sort" /><input type="hidden" name="Direction" value="@q.Direction" />
+        <div class="col-6 col-lg-2 d-grid"><button class="btn btn-primary">Aplicar</button></div>
+    </form>
+</section>
 <section class="content-panel">
-@if (Model.Count == 0) { <p class="text-secondary mb-0">No tenés compras registradas.</p> }
+@if (Model.Results.Items.Count == 0) { <p class="text-secondary mb-0">No tenés compras para los filtros actuales.</p> }
 else {
-<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Venta</th><th>Fecha</th><th>Estado</th><th>Entradas</th><th>Total</th><th></th></tr></thead><tbody>
-@for (var i = 0; i < Model.Count; i++) { var c = Model[i]; <tr><td>@($"VEN-{i + 1:000}")</td><td>@c.FechaVenta.ToString("dd/MM/yyyy HH:mm")</td><td>@c.EstadoVenta</td><td>@c.CantidadEntradas</td><td>@MoneyFormatter.Format(c.MontoTotal)</td><td><a asp-action="Detalle" asp-route-id="@c.IdVenta">Ver</a></td></tr> }
+<div class="table-responsive"><table class="table align-middle"><thead><tr><th><a class="sortable-link" href="@SortUrl("codigo")">@($"Código{Indicator("codigo")}")</a></th><th><a class="sortable-link" href="@SortUrl("fecha")">@($"Fecha{Indicator("fecha")}")</a></th><th><a class="sortable-link" href="@SortUrl("estado")">@($"Estado{Indicator("estado")}")</a></th><th><a class="sortable-link" href="@SortUrl("entradas")">@($"Entradas{Indicator("entradas")}")</a></th><th><a class="sortable-link" href="@SortUrl("total")">@($"Total{Indicator("total")}")</a></th><th>Eventos</th><th></th></tr></thead><tbody>
+@foreach (var c in Model.Results.Items) { <tr><td>@VisualCodeFormatter.Venta(c.NumeroVisual)</td><td>@c.FechaVenta.ToString("dd/MM/yyyy HH:mm")</td><td><span class="@StatusBadgeHelper.Venta(c.EstadoVenta)">@c.EstadoVenta</span></td><td>@c.CantidadEntradas</td><td>@MoneyFormatter.Format(c.MontoTotal)</td><td>@c.Eventos</td><td><a asp-action="Detalle" asp-route-id="@c.IdVenta">Ver</a></td></tr> }
 </tbody></table></div>}
+@if (Model.Results.TotalPages > 1) { <div class="d-flex justify-content-between align-items-center mt-3"><span class="text-secondary">Página @Model.Results.Page de @Model.Results.TotalPages</span><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page <= 1 ? "disabled" : null)" href="@Url.Action("Index", new { q.Busqueda, q.Estado, q.Evento, q.Desde, q.Hasta, q.Sort, q.Direction, page = Model.Results.Page - 1, q.PageSize })">Anterior</a><a class="btn btn-outline-secondary btn-sm @(Model.Results.Page >= Model.Results.TotalPages ? "disabled" : null)" href="@Url.Action("Index", new { q.Busqueda, q.Estado, q.Evento, q.Desde, q.Hasta, q.Sort, q.Direction, page = Model.Results.Page + 1, q.PageSize })">Siguiente</a></div></div> }
 </section>

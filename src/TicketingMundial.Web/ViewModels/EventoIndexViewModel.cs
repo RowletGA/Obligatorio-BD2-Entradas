@@ -9,6 +9,9 @@ public sealed class EventoIndexViewModel
     public DateTime? Desde { get; init; }
     public DateTime? Hasta { get; init; }
     public ulong? IdEstadio { get; init; }
+    public ulong? IdSector { get; init; }
     public string? Equipo { get; init; }
     public string? Estado { get; init; }
+    public string? Sort { get; init; }
+    public string? Direction { get; init; }
 }
