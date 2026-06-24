@@ -1,6 +1,6 @@
 # Ticketing Mundial 2026
 
-Aplicacion ASP.NET Core MVC para venta, transferencia y validacion de entradas del Mundial 2026 usando una base MySQL existente.
+Aplicación ASP.NET Core MVC para venta, transferencia y validación de entradas del Mundial 2026 usando una base MySQL existente.
 
 ## Requisitos
 
@@ -25,23 +25,23 @@ Los scripts originales son el contrato principal y no deben modificarse:
 3. `database/03_CreacionTriggers (v2).sql`
 
 
-## Configuracion
+## Configuración
 
 Copiar `src/TicketingMundial.Web/appsettings.example.json` a `src/TicketingMundial.Web/appsettings.Development.json` o configurar:
 
 ```bash
-ConnectionStrings__MySql="Server=HOST;Port=PUERTO;Database=BASE;User ID=USUARIO;Password=CONTRASENA;"
+ConnectionStrings__MySql="Server=HOST;Port=PUERTO;Database=BASE;User ID=USUARIO;Password=CONTRASEÑA;"
 QrSecurity__SigningKey="$(openssl rand -base64 32)"
 ```
 
 No guardar credenciales reales en Git.
 
-`src/TicketingMundial.Web/appsettings.Development.json` es local y esta ignorado por Git. Debe tener este formato, usando valores reales solo en la maquina de desarrollo:
+`src/TicketingMundial.Web/appsettings.Development.json` es local y está ignorado por Git. Debe tener este formato, usando valores reales solo en la máquina de desarrollo:
 
 ```json
 {
   "ConnectionStrings": {
-    "MySql": "Server=HOST;Port=PUERTO;Database=BASE;User ID=USUARIO;Password=CONTRASENA;SslMode=Preferred;AllowPublicKeyRetrieval=True;Connection Timeout=15;Default Command Timeout=30;"
+    "MySql": "Server=HOST;Port=PUERTO;Database=BASE;User ID=USUARIO;Password=CONTRASEÑA;SslMode=Preferred;AllowPublicKeyRetrieval=True;Connection Timeout=15;Default Command Timeout=30;"
   },
   "QrSecurity": {
     "SigningKey": "CONFIGURAR_MEDIANTE_VARIABLE_DE_ENTORNO",
@@ -65,7 +65,7 @@ Comprobar conectividad TCP:
 nc -vz HOST PUERTO
 ```
 
-## Ejecucion
+## Ejecución
 
 ```bash
 dotnet restore TicketingMundial.sln
@@ -81,7 +81,7 @@ $env:ASPNETCORE_ENVIRONMENT="Development"
 dotnet run --project src/TicketingMundial.Web --urls "http://localhost:5000"
 ```
 
-El health check esta disponible en `/health` y ejecuta solamente `SELECT 1;`.
+El health check está disponible en `/health` y ejecuta solamente `SELECT 1;`.
 
 URLs principales:
 
@@ -102,14 +102,14 @@ La pantalla `/Account/Register` registra usuarios generales reales en:
 - `UsuarioGeneral`
 - `TelefonoUsuario`
 
-El registro usa una unica transaccion MySQL. La contrasena se valida en servidor y se guarda solo como hash generado con `PasswordHasher<UsuarioAutenticacion>`.
-Los paises y tipos de documento se cargan desde `src/TicketingMundial.Web/catalogos-registro.json`. El formulario renderiza opciones iniciales desde servidor y funciona aunque JavaScript no cargue.
+El registro usa una única transacción MySQL. La contraseña se valida en servidor y se guarda solo como hash generado con `PasswordHasher<UsuarioAutenticacion>`.
+Los países y tipos de documento se cargan desde `src/TicketingMundial.Web/catalogos-registro.json`. El formulario renderiza opciones iniciales desde servidor y funciona aunque JavaScript no cargue.
 
-## Administracion
+## Administración
 
-El modulo `/Admin` requiere rol `ADMINISTRADOR`. Gestiona estadios, sectores, equipos y alta de eventos. El pais sede se obtiene desde la tabla `Administrador`, no desde el navegador.
+El módulo `/Admin` requiere rol `ADMINISTRADOR`. Gestiona estadios, sectores, equipos y alta de eventos. El país sede se obtiene desde la tabla `Administrador`, no desde el navegador.
 
-La creacion de eventos usa una transaccion MySQL sobre `Evento`, `EventoLocal`, `EventoVisita` y `EventoSector`. Los triggers de la base controlan conflictos horarios, equipos simultaneos y sectores fuera del estadio.
+La creación de eventos usa una transacción MySQL sobre `Evento`, `EventoLocal`, `EventoVisita` y `EventoSector`. Los triggers de la base controlan conflictos horarios, equipos simultáneos y sectores fuera del estadio.
 
 ## Flujo operativo
 
@@ -126,13 +126,13 @@ El QR dinámico usa HMAC-SHA256, vence cada 30 segundos y se valida contra propi
 Para probarlo desde el navegador:
 
 1. Abrir `/Account/Register`.
-2. Completar documento, correo, datos personales, telefono y contrasena.
-3. Al finalizar, la aplicacion redirige a login con mensaje de exito.
+2. Completar documento, correo, datos personales, teléfono y contraseña.
+3. Al finalizar, la aplicación redirige a login con mensaje de éxito.
 4. Verificar que no haya registros parciales si ocurre un error.
 
 ## Login
 
-La pantalla `/Account/Login` solicita correo y contrasena. El login:
+La pantalla `/Account/Login` solicita correo y contraseña. El login:
 
 - busca el usuario por correo con SQL parametrizado;
 - rechaza usuarios con `HashContrasena IS NULL`;
@@ -145,10 +145,10 @@ El mensaje de fallo es siempre `Correo o contraseña incorrectos.`.
 
 Para probarlo:
 
-1. Iniciar sesion con el correo registrado y la contrasena elegida.
-2. Verificar redireccion al dashboard.
-3. Cerrar sesion con el boton de la navegacion.
-4. Probar credenciales incorrectas y payloads de SQL Injection; deben mostrar el mensaje generico o rate limit si se exceden intentos.
+1. Iniciar sesión con el correo registrado y la contraseña elegida.
+2. Verificar redirección al dashboard.
+3. Cerrar sesión con el botón de la navegación.
+4. Probar credenciales incorrectas y payloads de SQL Injection; deben mostrar el mensaje genérico o rate limit si se exceden intentos.
 
 ## Perfiles
 
@@ -168,30 +168,30 @@ Documento específico: `docs/PERFILES_Y_NAVEGACION.md`.
 
 Las pruebas cubren:
 
-- politica de contrasenas;
-- generacion y verificacion de hash;
-- rechazo de contrasena incorrecta y hash alterado;
+- política de contraseñas;
+- generación y verificación de hash;
+- rechazo de contraseña incorrecta y hash alterado;
 - `SuccessRehashNeeded`;
-- creacion de claims;
-- deteccion de perfiles;
+- creación de claims;
+- detección de perfiles;
 - lista blanca de ordenamiento;
-- limites de paginacion;
+- límites de paginación;
 - escape de `LIKE`;
 - entradas maliciosas tratadas como texto;
-- traduccion de errores funcionales MySQL.
+- traducción de errores funcionales MySQL.
 - perfil activo, perfiles múltiples y formato monetario consistente.
 - tokens QR dinámicos, firma, expiración, tolerancia e invalidación por cambio de propietario.
 
-## Limitacion de usuarios existentes
+## Limitación de usuarios existentes
 
-Usuarios creados antes de ejecutar `04_AgregarHashContrasena.sql` tendran `HashContrasena IS NULL`. Esos usuarios no pueden iniciar sesion hasta que definan una contrasena mediante un procedimiento posterior o hasta crear usuarios nuevos para la demostracion.
+Usuarios creados antes de ejecutar `04_AgregarHashContrasena.sql` tendrán `HashContrasena IS NULL`. Esos usuarios no pueden iniciar sesión hasta que definan una contraseña mediante un procedimiento posterior o hasta crear usuarios nuevos para la demostración.
 
 ## Errores comunes
 
 - `dotnet: command not found`: instalar .NET SDK 8 y revisar `PATH`.
 - `/health` no responde: revisar cadena local, DNS, puerto, TLS y credenciales.
-- Catalogo vacio: la base puede no tener eventos cargados; no insertar datos ficticios sin autorizacion.
-- Login devuelve 429: se activo el rate limiting por intentos repetidos.
+- Catálogo vacío: la base puede no tener eventos cargados; no insertar datos ficticios sin autorización.
+- Login devuelve 429: se activó el rate limiting por intentos repetidos.
 - Usuarios viejos no ingresan: verificar `HashContrasena IS NULL`.
 
-Nunca publicar credenciales reales, cadenas de conexion reales ni hashes.
+Nunca publicar credenciales reales, cadenas de conexión reales ni hashes.
