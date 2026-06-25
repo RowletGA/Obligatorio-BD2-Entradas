@@ -1,7 +1,7 @@
 -- ============================================================
 -- Vistas - Sistema de venta y validación de entradas
 -- Motor: MySQL 8.0+
--- Requiere ejecutar primero 01_tablas.sql
+-- Requiere ejecutar primero 01_CreacionTablas.sql
 -- ============================================================
 
 USE IC_Grupo4;

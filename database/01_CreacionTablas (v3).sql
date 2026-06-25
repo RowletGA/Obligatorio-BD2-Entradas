@@ -3,9 +3,6 @@
 -- Motor: MySQL 8.0.16 o superior (CHECK constraints activos)
 -- ============================================================
 
--- Nota: se usa el schema asignado (IC_Grupo4) en lugar de crear
--- uno nuevo, ya que el usuario no cuenta con permiso CREATE DATABASE
--- (mismo motivo por el que CREATE VIEW fue denegado anteriormente).
 USE IC_Grupo4;
 
 -- ============================================================
@@ -19,6 +16,9 @@ CREATE TABLE Usuario (
     PrimerNombre            VARCHAR(60)  NOT NULL,
     PrimerApellido          VARCHAR(60)  NOT NULL,
     CorreoElectronico       VARCHAR(254) NOT NULL,
+    -- Almacenar siempre como hash (bcrypt/argon2), nunca texto plano.
+    -- VARCHAR(255) cubre cualquier algoritmo actual y futuro.
+    Contrasena              VARCHAR(255) NOT NULL,
     DireccionPais           VARCHAR(50)  NULL,
     DireccionLocalidad      VARCHAR(100) NULL,
     DireccionCalle          VARCHAR(100) NULL,
@@ -399,34 +399,32 @@ CREATE TABLE Transferencia (
         )
 ) ENGINE = InnoDB;
 
+
+
 -- ============================================================
 -- 8. ÍNDICES ADICIONALES
 -- ============================================================
--- COMENTADO A LA ESPERA DE PERMISOS DE CREACIÓN DE ÍNDICES
--- (CREATE INDEX) por parte del administrador del servidor.
--- Descomentar y ejecutar una vez otorgado el permiso.
--- ============================================================
 
--- CREATE INDEX IX_Evento_FechaHora
---     ON Evento (FechaHora);
+CREATE INDEX IX_Evento_FechaHora
+    ON Evento (FechaHora);
 
--- CREATE INDEX IX_Venta_FechaVenta
---     ON Venta (FechaVenta);
+CREATE INDEX IX_Venta_FechaVenta
+    ON Venta (FechaVenta);
 
--- CREATE INDEX IX_Entrada_EventoSectorEstado
---     ON Entrada (IDEvento, IDSector, EstadoEntrada);
+CREATE INDEX IX_Entrada_EventoSectorEstado
+    ON Entrada (IDEvento, IDSector, EstadoEntrada);
 
--- CREATE INDEX IX_Entrada_Venta
---     ON Entrada (IDVenta);
+CREATE INDEX IX_Entrada_Venta
+    ON Entrada (IDVenta);
 
--- CREATE INDEX IX_Transferencia_EntradaEstado
---     ON Transferencia (IDEntrada, Estado);
+CREATE INDEX IX_Transferencia_EntradaEstado
+    ON Transferencia (IDEntrada, Estado);
 
--- CREATE INDEX IX_Transferencia_UsuarioRecibeEstado
---     ON Transferencia (TipoDocRecibe, PaisDocRecibe, NumeroRecibe, Estado);
+CREATE INDEX IX_Transferencia_UsuarioRecibeEstado
+    ON Transferencia (TipoDocRecibe, PaisDocRecibe, NumeroRecibe, Estado);
 
--- CREATE INDEX IX_Validacion_Funcionario
---     ON Validacion (TipoDocFuncionario, PaisDocFuncionario, NumeroFuncionario);
+CREATE INDEX IX_Validacion_Funcionario
+    ON Validacion (TipoDocFuncionario, PaisDocFuncionario, NumeroFuncionario);
 
--- CREATE INDEX IX_FuncionarioEventoSector_EventoSector
---     ON FuncionarioEventoSector (IDEvento, IDSector);
+CREATE INDEX IX_FuncionarioEventoSector_EventoSector
+    ON FuncionarioEventoSector (IDEvento, IDSector);

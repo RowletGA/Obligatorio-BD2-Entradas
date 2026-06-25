@@ -33,9 +33,9 @@ dotnet --list-sdks
 
 Los scripts originales son el contrato principal y no deben modificarse:
 
-1. `database/01_CreacionTablas (v2).sql`
-2. `database/02_CreacionVistas (v2).sql`
-3. `database/03_CreacionTriggers (v2).sql`
+1. `database/01_CreacionTablas (v3).sql`
+2. `database/02_CreacionVistas (v3).sql`
+3. `database/03_CreacionTriggers (v3).sql`
 
 
 ## Configuración

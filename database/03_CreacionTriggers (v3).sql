@@ -2,15 +2,9 @@
 -- Triggers - Sistema de venta y validación de entradas
 -- Motor: MySQL 8.0+
 --
--- Requiere ejecutar antes, EN ESTE ORDEN:
---   1. 01_tablas.sql
---   2. 02_vistas.sql   (el trigger de Transferencia usa V_PropietarioActual)
---
--- IMPORTANTE: crear triggers requiere el privilegio TRIGGER.
--- Es un permiso distinto al de CREATE VIEW que ya te fue denegado
--- una vez -- si este script falla con un error de permisos
--- parecido, hay que pedirle también este privilegio al
--- administrador del servidor antes de continuar.
+-- Requiere ejecutar antes, en orden:
+--   1. 01_CreacionTablas.sql
+--   2. 02_CreacionVistas.sql
 -- ============================================================
 
 USE IC_Grupo4;
@@ -450,3 +444,7 @@ END$$
 
 
 DELIMITER ;
+
+# CREATE USER 'ic_g4_lector'@'%' IDENTIFIED BY 'Obligatorio2026Grupo4';
+# GRANT SELECT ON IC_Grupo4.* TO 'ic_g4_lector'@'%';
+# FLUSH PRIVILEGES;
